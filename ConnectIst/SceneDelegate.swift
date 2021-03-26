@@ -33,20 +33,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
     }
     
-    private func getUserInfosFromUserDefault() -> User {
+    private func getUserInfosFromUserDefault() -> CurrentUser {
         
         let id = UserDefaults.standard.integer(forKey: "currentUserId")
         let email = UserDefaults.standard.string(forKey: "currentUserEmail") ?? ""
         let userName = UserDefaults.standard.string(forKey: "currentUserUserName") ?? ""
         let fullName = UserDefaults.standard.string(forKey: "currentUserFullName") ?? ""
-        let cover = UserDefaults.standard.string(forKey: "currentUserCover")!
-        let ava = UserDefaults.standard.string(forKey: "currentUserAva")!
+        let cover = UserDefaults.standard.string(forKey: "currentUserCover") ?? ""
+        let ava = UserDefaults.standard.string(forKey: "currentUserAva") ?? ""
         let bio = UserDefaults.standard.string(forKey: "currentUserBio")
+        let allowFriends = UserDefaults.standard.string(forKey: "currentUserAllowFriends") ?? "1"
+        let allowFollow = UserDefaults.standard.string(forKey: "currentUserAllowFollow") ?? "1"
         
-        let user = User(id: id, email: email, userName: userName, fullName: fullName,
-                        cover: cover, ava: ava, bio: bio, dateCreated: nil, requestSender: nil,
-                        requestReceiver: nil, friendshipSender: nil, friendshipReceiver: nil)
         
+        let user = CurrentUser(id: id, email: email, userName: userName, fullName: fullName,
+                               cover: cover, ava: ava, bio: bio,
+                               allowFriends: allowFriends, allowFollow: allowFollow)
         
         return user
     }

@@ -33,6 +33,8 @@ class EditController: UITableViewController, UINavigationControllerDelegate {
     @IBOutlet weak var passwordTextField: UITextField!
     @IBOutlet weak var firstNameTextField: UITextField!
     @IBOutlet weak var lastNameTextField: UITextField!
+    @IBOutlet weak var friendsSwitch: UISwitch!
+    @IBOutlet weak var followSwitch: UISwitch!
     
 
     
@@ -89,6 +91,20 @@ class EditController: UITableViewController, UINavigationControllerDelegate {
             Helper.shared.downloadImage(from: avaPath, showIn: avaImageView, orShow: #imageLiteral(resourceName: "userImage"))
         }
         
+        // check is currently user allowing friendship and follow
+        // manipulate switcher based on the user's settings received from the server
+        if let allowFriends = currentUser?.allowFriends {
+            if Int(allowFriends) == 0 {
+                friendsSwitch.isOn = false
+            }
+        }
+        
+        if let allowFollow = currentUser?.allowFollow {
+            if Int(allowFollow) == 0 {
+                followSwitch.isOn = false
+            }
+        }
+        
     }
     
     // update user in terms of informations that are entered by user
@@ -100,6 +116,24 @@ class EditController: UITableViewController, UINavigationControllerDelegate {
         let firstName = firstNameTextField.text!
         let lastName = lastNameTextField.text!
         let password = passwordTextField.text!
+        // adjust front end's logic to the backend logic
+        var allowFriends = 1
+        if friendsSwitch.isOn == true {
+            allowFriends = 1
+//            print("DEBUG: Allow friends: \(allowFriends) ")
+        } else {
+            allowFriends = 0
+//            print("DEBUG: Allow friends: \(allowFriends) ")
+        }
+        
+        var allowFollow = 0
+        if followSwitch.isOn == true {
+            allowFollow = 1
+//            print("DEBUG: Allow follow: \(allowFollow) ")
+        } else {
+            allowFollow = 0
+//            print("DEBUG: Allow follow: \(allowFollow) ")
+        }
         
         // logic of validation
         if Helper.shared.isValid(email: email) == false {
@@ -121,19 +155,20 @@ class EditController: UITableViewController, UINavigationControllerDelegate {
                     Helper.shared.showAlert(title: "Invalid Password", message: "Password must contain at least 6 characters", in: self)
                     return
                 } else {
-                    UserService.shared.updateUser(id: id, email: email, userName: userName,
-                                                   firstName: firstName, lastName: lastName, password: password,
-                                                   isPasswordChanged: true,
-                                                   selfVC: self)
+                    UserService.shared.updateUser(id: id, email: email, userName: userName, firstName: firstName,
+                                                  lastName: lastName, password: password, isPasswordChanged: true,
+                                                  allowFriends: allowFriends, allowFollow: allowFollow,
+                                                  selfVC: self)
                     // call update images according to the user info
                     updateImages()
                     saveNotificationObserver()
                 }
             } else {
-                UserService.shared.updateUser(id: id, email: email, userName: userName,
-                                               firstName: firstName, lastName: lastName, password: password,
-                                               isPasswordChanged: false,
-                                               selfVC: self)
+                
+                UserService.shared.updateUser(id: id, email: email, userName: userName, firstName: firstName,
+                                              lastName: lastName, password: password, isPasswordChanged: false,
+                                              allowFriends: allowFriends, allowFollow: allowFollow,
+                                              selfVC: self)
                 // call update images according to the user info
                 updateImages()
                 saveNotificationObserver()
@@ -176,6 +211,7 @@ class EditController: UITableViewController, UINavigationControllerDelegate {
     @IBAction func saveButton_clicked(_ sender: UIBarButtonItem) {
         // run func
         updateUser()
+        print("DEBUG: Save button pressed..")
         
     }
     

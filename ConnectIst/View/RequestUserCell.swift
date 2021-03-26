@@ -106,7 +106,7 @@ class RequestUserCell: UITableViewCell {
         messageLabel.text = "Request removed"
         
         hideButtonsShowMessage()
-        confirmRejectRequestOrDeleteFriend(action: .delete, userId: userId, friendId: friendID)
+        confirmRejectRequestOrDeleteFriend(action: .reject, userId: userId, friendId: friendID)
         // execute / send protocol and assign to it data: 'confirm' and 'current cell'
         requestUserCellDelegate?.updateFriendshipRequestDelegate(status: 0, from: self)
         

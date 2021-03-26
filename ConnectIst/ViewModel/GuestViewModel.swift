@@ -31,6 +31,18 @@ struct GuestViewModel {
         return user.bio
     }
     
+    var allowFriends: Int {
+        return user.allowFriends
+    }
+    
+    var allowFollow: Int {
+        return user.allowFollow
+    }
+    
+    var followedUser: Int? {
+        return user.followedUser
+    }
+    
     
     
 }
@@ -57,6 +69,18 @@ struct GuestViewModelForRequests {
     
     var bio: String? {
         return requestedUser.bio
+    }
+    
+    var allowFriends: Int {
+        return requestedUser.allowFriends
+    }
+    
+    var allowFollow: Int {
+        return requestedUser.allowFollow
+    }
+    
+    var followedUser: Int? {
+        return requestedUser.followedUser
     }
     
     

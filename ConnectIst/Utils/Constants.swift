@@ -11,12 +11,9 @@ import UIKit
 // use constant values in order to minimize error during code
 struct K {
     
-    
-    
-    
     static let userImage = "userImage"
     static let homeCoverImage = "homeCoverImage"
-    static let facebookColor = "facebookColor"
+    static let facebookColor = UIColor(named: "facebookColor")
     
     //    static let cellIdentifier = "ReusableCell"
     //    static let cellNibName = "MessageCell"

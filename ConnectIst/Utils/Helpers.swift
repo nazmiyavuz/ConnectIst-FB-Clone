@@ -121,7 +121,7 @@ struct Helper {
     
     //MARK: - fetchUserInfo
     
-    func fetchUserInfo(parsedJSON: NSDictionary, isLoginVC: Bool) {
+    func fetchUserInfo(parsedJSON: NSDictionary) {
         
         // save values to the userDefaults
         if let userId = parsedJSON["id"] as? String {
@@ -142,19 +142,29 @@ struct Helper {
         currentUser?.fullName = currentUserFullName
         UserDefaults.standard.set(currentUserFullName, forKey: "currentUserFullName")
         
-        if isLoginVC {
-            let currentUserCover = parsedJSON["cover"] as? String
-            currentUser?.cover = currentUserCover ?? "http://localhost/connectIst/cover/0/cover.jpg"
-            UserDefaults.standard.set(currentUserCover, forKey: "currentUserCover")
+        
+        let currentUserCover = parsedJSON["cover"] as? String
+        currentUser?.cover = currentUserCover ?? "http://localhost/connectIst/cover/0/cover.jpg"
+        UserDefaults.standard.set(currentUserCover, forKey: "currentUserCover")
+        
+        let currentUserAva = parsedJSON["ava"] as? String
+        currentUser?.ava = currentUserAva ?? "http://localhost/connectIst/ava/0/ava.jpg"
+        UserDefaults.standard.set(currentUserAva, forKey: "currentUserAva")
+        
+        let currentUserBio = parsedJSON["bio"] as? String
+        currentUser?.bio = currentUserBio
+        UserDefaults.standard.set(currentUserBio, forKey: "currentUserBio")
+        
+        let currentUserAllowFriends = parsedJSON["allow_friends"] as! String
+        currentUser?.allowFriends = currentUserAllowFriends
+        UserDefaults.standard.set(currentUserAllowFriends, forKey: "currentUserAllowFriends")
+        
+        let currentUserAllowFollow = parsedJSON["allow_follow"] as! String
+        currentUser?.allowFollow = currentUserAllowFollow
+        UserDefaults.standard.set(currentUserAllowFollow, forKey: "currentUserAllowFollow")
+        
             
-            let currentUserAva = parsedJSON["ava"] as? String
-            currentUser?.ava = currentUserAva ?? "http://localhost/connectIst/ava/0/ava.jpg"
-            UserDefaults.standard.set(currentUserAva, forKey: "currentUserAva")
-            
-            let currentUserBio = parsedJSON["bio"] as? String
-            currentUser?.bio = currentUserBio
-            UserDefaults.standard.set(currentUserBio, forKey: "currentUserBio")
-        }
+        
     }
     
     //MARK: - downloadImage

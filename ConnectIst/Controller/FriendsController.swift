@@ -669,12 +669,19 @@ extension FriendsController: UITableViewDataSource {
             
             // manipulate appearance of friendButton
             DispatchQueue.main.async {
+                // if searched user is not allowing a friendship request - hide "send request button" in the cell
+                if self.searchedUsers[indexPath.row].allowFriends == 0 && self.friendshipStatus[indexPath.row] != 2 {
+                    cell.friendButton.isHidden = true
+                    cell.accessoryType = .disclosureIndicator
+                } else {
+                    cell.friendButton.isHidden = false
+                    cell.accessoryType = .none
+                }
                 
                 let requestType = self.friendshipStatus[indexPath.row]
                 cell.friendButton.manipulateAddFriendButton(friendRequestType: requestType, isShowingTitle: false)
                 
             }
-            
             return cell
             
         // configure cell of tableViewToHandleRequests

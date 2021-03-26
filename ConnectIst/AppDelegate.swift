@@ -12,7 +12,7 @@ import UIKit
 
 // User related information
 
-var currentUser: User?
+var currentUser: CurrentUser?
 
 
 var currentUserAvaImage: UIImage?

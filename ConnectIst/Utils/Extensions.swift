@@ -105,18 +105,18 @@ extension UIButton {
         // icon of the button
         if friendRequestType == 1 { // current user got requested by the guest (guest-user)
             setBackgroundImage(#imageLiteral(resourceName: "friend"), for: .normal)
-            tintColor = UIColor(named: K.facebookColor)!
+            tintColor = K.facebookColor
         } else if friendRequestType == 0 { // not requested
             setBackgroundImage(#imageLiteral(resourceName: "unfriend"), for: .normal)
             tintColor = .darkGray
 
         } else if friendRequestType == 2 { // user requested currentUser to be his/her friend
             setBackgroundImage(#imageLiteral(resourceName: "respond"), for: .normal)
-            tintColor = UIColor(named: K.facebookColor)
+            tintColor = K.facebookColor
             
         } else if friendRequestType == 3 { // they are friends
             setBackgroundImage(#imageLiteral(resourceName: "friends"), for: .normal)
-            tintColor = UIColor(named: K.facebookColor)
+            tintColor = K.facebookColor
         }
         
         
@@ -127,19 +127,38 @@ extension UIButton {
         if showTitle {
             if requestType == 1 {
                 setTitle("Requested", for: .normal)
-                titleLabel?.textColor = UIColor(named: K.facebookColor)
+                titleLabel?.textColor = K.facebookColor
             } else if requestType == 0 {
                 setTitle("Add", for: .normal)
                 titleLabel?.textColor = .darkGray
             } else if requestType == 2 {
                 setTitle("Respond", for: .normal)
-                titleLabel?.textColor = UIColor(named: K.facebookColor)
+                titleLabel?.textColor = K.facebookColor
             } else if requestType == 3 {
                 setTitle("Friends", for: .normal)
-                titleLabel?.textColor = UIColor(named: K.facebookColor)
+                titleLabel?.textColor = K.facebookColor
             }
         }
     }
+    //manipulate related button
+    func updateButtonIconTitleColor(backgroundImage: UIImage, title: String, color: UIColor) {
+        setBackgroundImage(backgroundImage, for: .normal)
+        setTitle(title, for: .normal)
+        tintColor = color
+        titleLabel?.textColor = color
+    }
+    
+    
+//    func manipulateFollowButton(followedUser: Int?) {
+//        
+//        if followedUser != nil {
+//            setBackgroundImage(#imageLiteral(resourceName: "follow"), for: .normal)
+//            setTitle("Followed", for: .normal)
+//            tintColor = UIColor(named: K.facebookColor)
+//            titleLabel?.textColor = UIColor(named: K.facebookColor)
+//        }
+//        
+//    }
     
     
     // MARK: -

@@ -11,11 +11,13 @@ import Alamofire
 // to minimize error 
 enum UserServiceAction: String {
     case search = "search"
-    case reject = "reject" // FIXME: Change this location or delete
-    case add = "add" // FIXME:  Change this location location or delete
+    case reject = "reject"
+    case add = "add"
     case requests = "requests"
     case confirm = "confirm"
-    case delete = "delete" // FIXME:  Change this location location or delete
+    case delete = "delete"
+    case follow = "follow"
+    case unfollow = "unfollow"
 }
 
 struct UserService {
@@ -26,25 +28,30 @@ struct UserService {
     
     func updateUser(id:Int, email: String, userName: String, firstName: String,
                     lastName: String, password: String, isPasswordChanged:Bool,
-                    selfVC: UIViewController ) {
-        
-        
+                    allowFriends: Int, allowFollow: Int,
+                    selfVC: UIViewController) {
         // convert for JSON value
-        let idString = String(id)
         let fullName = "\(firstName) \(lastName)"
         
+        var passwordChanged = "false"
+        if isPasswordChanged {
+            passwordChanged = "true"
+        } else {
+            passwordChanged = "false"
+        }
         // prepare request
         let url = URL(string: "http://localhost/connectIst/updateUser.php")!
-        let body = "id=\(idString)&email=\(email.lowercased())&userName=\(userName.lowercased())&fullName=\(fullName.lowercased())&newPassword=\(isPasswordChanged)&password=\(password)"
+        let body = "id=\(id)&email=\(email)&userName=\(userName.lowercased())&fullName=\(fullName.lowercased())&newPassword=\(passwordChanged)&password=\(password)&allow_friends=\(allowFriends)&allow_follow=\(allowFollow)"
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.httpBody = body.data(using: .utf8)
         
         
         // send request
-        URLSession.shared.dataTask(with: request) { (data, response, error) in
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            
             DispatchQueue.main.async {
-                
                 // error
                 if error != nil {
                     Helper.shared.showAlert(title: "Server Error", message: error!.localizedDescription, in: selfVC)
@@ -52,34 +59,32 @@ struct UserService {
                 }
                 
                 do {
-                    
                     // access data received from the server in the safe mode
                     guard let data = data else {
                         Helper.shared.showAlert(title: "Data Error", message: error!.localizedDescription, in: selfVC)
                         return
                     }
-                    
                     // convert data to being json
                     let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? NSDictionary
-                    
                     // cast json in the safe mode
                     guard let parsedJSON = json else { return }
-                    
                     // show alert once saved
+                    print(parsedJSON)
                     if parsedJSON["status"] as! String == "200" {
-                        
+                        print(parsedJSON["status"] as! String)
                         // saving uploaded user related information (e.g. ava's path, cover's path)
-                        Helper.shared.fetchUserInfo(parsedJSON: parsedJSON, isLoginVC: false)
+                        Helper.shared.fetchUserInfo(parsedJSON: parsedJSON)
                                                 
                         Helper.shared.showAlert(title: "Success!", message: "Information has been saved", in: selfVC)
-                        
                     }
                 } catch {
                     Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: selfVC)
                     return
                 }
             }
-        }.resume()
+        }
+        
+        task.resume()
     }
     
     
@@ -236,6 +241,8 @@ struct UserService {
         }
     }
     
+    //MARK: - ConfirmRejectRequestOrDeleteFriend
+    
     func confirmRejectRequestOrDeleteFriend(userId: Int, friendId: Int, action:UserServiceAction, selfVC: UIViewController,
                                             completion: @escaping (Result<Status, Error>)->()) {
         
@@ -268,7 +275,7 @@ struct UserService {
                     let status = try JSONDecoder().decode(Status.self, from: data)
                     
                     completion(.success(status))
-                    
+                    print(status)
                 } catch {
                     Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: selfVC)
                     completion(.failure(error))
@@ -281,7 +288,7 @@ struct UserService {
         
     }
     
-    
+    //MARK: - Delete Friend
     
     func deleteFriendship(userId: Int, friendId: Int, action:UserServiceAction, selfVC: UIViewController,
                                 completion: @escaping (Result<Status, Error>)->()) {

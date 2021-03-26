@@ -34,7 +34,7 @@ class GuestController: UITableViewController {
 //    var avaPath = String()
 //    var coverPath = String()
 //    var bio = String()
-    
+    var isFollowedUser = false
     // post obj
     var isLoadingPost = false
     var posts = [Post]()
@@ -171,8 +171,9 @@ class GuestController: UITableViewController {
     private func confirmRejectRequestOrDeleteFriend(action: UserServiceAction, userId: Int, friendId: Int) {
         
         
-        UserService.shared.confirmRejectRequestOrDeleteFriend(userId: userId, friendId: friendId, action: action,
-                                                  selfVC: self) { (response) in
+        UserService.shared.confirmRejectRequestOrDeleteFriend(userId: userId, friendId: friendId,
+                                                              action: action,
+                                                              selfVC: self) { (response) in
             switch response {
             
             case .failure(let error) :
@@ -190,6 +191,14 @@ class GuestController: UITableViewController {
     
     //MARK: - Private Functions
     
+    private func handleFollowedFunc() {
+        //  handle following
+        if comingFromTableView == "search" {
+            isFollowedUser = guestViewModel?.followedUser != nil ? true : false
+        } else if comingFromTableView == "friend" {
+            isFollowedUser = guestViewModelForRequest?.followedUser != nil ? true : false
+        }
+    }
     
     
     
@@ -378,7 +387,36 @@ class GuestController: UITableViewController {
         // showing sheet
         present(sheet, animated: true, completion: nil)
     }
-    
+    // sends request to the server to follow / unfollow the user
+    @IBAction func followButton_clicked(_ followButton: UIButton) {
+        
+        guard let currentUserId = currentUser?.id else { return }
+        var followedId = 0
+        if comingFromTableView == "search" {
+            followedId = guestViewModel!.id
+            print("DEBUG: followed user id = \(followedId) ")
+        } else if comingFromTableView == "friend" {
+            followedId = guestViewModelForRequest!.id
+        }
+        
+        print("DEBUG: isFollowedUser = \(isFollowedUser) ")
+        
+        // start following the user if currently is not follow
+        if isFollowedUser {
+            // update appearance of the button
+            followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "unfollow"), title: "Follow", color: .darkGray)
+            confirmRejectRequestOrDeleteFriend(action: .unfollow, userId: currentUserId, friendId: followedId)
+            isFollowedUser = false
+            
+        } else { // stop following the user if currently is followed
+            // update appearance of the button
+            followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "follow"), title: "Unfollow", color: K.facebookColor!)
+            confirmRejectRequestOrDeleteFriend(action: .follow, userId: currentUserId, friendId: followedId)
+            isFollowedUser = true
+        }
+        
+        
+    }
     
     
     
@@ -424,7 +462,19 @@ class GuestController: UITableViewController {
             
             let coverPath = viewModel.coverPath
             Helper.shared.downloadImage(from: coverPath, showIn: coverImageView, orShow:  #imageLiteral(resourceName: "homeCoverImage"))
+            // manipulating buttons based on the privacy settings of the guest user
+            if viewModel.allowFriends == 0 && self.friendshipStatus != 2 && self.friendshipStatus != 3 {
+                friendButton.isEnabled = false
+            }
             
+            if viewModel.allowFollow == 0 && viewModel.followedUser == nil {
+                followButton.isEnabled = false
+            }
+            
+            if viewModel.followedUser != nil {
+                followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "follow"), title: "Followed",
+                                                        color: K.facebookColor!)
+            }
             
             if let bio = viewModel.bio {
                 bioLabel.text = bio
@@ -451,6 +501,20 @@ class GuestController: UITableViewController {
             let coverPath = viewModel.coverPath
             Helper.shared.downloadImage(from: coverPath, showIn: coverImageView, orShow:  #imageLiteral(resourceName: "homeCoverImage"))
             
+            // FIXME: Rewrite this code for manipulating buttons from coming friendsTableView
+            // manipulating buttons based on the privacy settings of the guest user
+            if viewModel.allowFriends == 0 && self.friendshipStatus != 2 {
+                friendButton.isEnabled = false
+            }
+
+            if viewModel.allowFollow == 0 && viewModel.followedUser == nil {
+                followButton.isEnabled = false
+            }
+
+            if viewModel.followedUser != nil {
+                followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "follow"), title: "Followed",
+                                                        color: K.facebookColor!)
+            }
             
             if let bio = viewModel.bio {
                 bioLabel.text = bio

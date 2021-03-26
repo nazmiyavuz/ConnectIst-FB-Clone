@@ -103,7 +103,7 @@ struct AuthService {
                         Helper.shared.instantiateViewController(identifier: "TabBar", animated: true, presentStyle: .fullScreen, by: selfVC, completion: nil)
                         
                         
-                        Helper.shared.fetchUserInfo(parsedJSON: parsedJSON, isLoginVC: isLoginVC)
+                        Helper.shared.fetchUserInfo(parsedJSON: parsedJSON)
                         
                         // Some error occurred related to the entered data, like: wrong password, wrong email, etc
                     } else {
@@ -178,7 +178,7 @@ struct AuthService {
 //                            UserDefaults.standard.set(currentUserId, forKey: "currentUserId")
 //                        }
                         
-                        Helper.shared.fetchUserInfo(parsedJSON: parsedJSON, isLoginVC: isLoginVC)
+                        Helper.shared.fetchUserInfo(parsedJSON: parsedJSON)
                         
                         let controller = HomeController()
                         LoginController().navigationController?.pushViewController(controller, animated: true)

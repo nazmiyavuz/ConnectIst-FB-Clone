@@ -712,6 +712,9 @@
                                             <state key="highlighted">
                                                 <color key="titleShadowColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                             </state>
+                                            <connections>
+                                                <action selector="followButton_clicked:" destination="rKJ-RY-VKN" eventType="touchUpInside" id="adN-2n-Gpf"/>
+                                            </connections>
                                         </button>
                                         <button opaque="NO" contentMode="scaleAspectFit" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Ybu-b7-FhI" userLabel="messageButton">
                                             <rect key="frame" x="182.5" y="0.0" width="40" height="40"/>
@@ -1104,6 +1107,58 @@
                                             </constraints>
                                         </tableViewCellContentView>
                                     </tableViewCell>
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" indentationWidth="10" rowHeight="50" id="Qbn-8F-S45">
+                                        <rect key="frame" x="0.0" y="707" width="414" height="50"/>
+                                        <autoresizingMask key="autoresizingMask"/>
+                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="Qbn-8F-S45" id="sxf-rU-uMP">
+                                            <rect key="frame" x="0.0" y="0.0" width="414" height="50"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                            <subviews>
+                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Allow people add me as a friend" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lvf-N8-JJg">
+                                                    <rect key="frame" x="20" y="15" width="244.5" height="20"/>
+                                                    <fontDescription key="fontDescription" name="HelveticaNeue" family="Helvetica Neue" pointSize="17"/>
+                                                    <nil key="textColor"/>
+                                                    <nil key="highlightedColor"/>
+                                                </label>
+                                                <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="rLy-cd-Cam">
+                                                    <rect key="frame" x="345" y="9.5" width="51" height="31"/>
+                                                    <color key="onTintColor" red="0.29116719959999998" green="0.40109136699999998" blue="0.67846095559999997" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                                </switch>
+                                            </subviews>
+                                            <constraints>
+                                                <constraint firstAttribute="trailing" secondItem="rLy-cd-Cam" secondAttribute="trailing" constant="20" symbolic="YES" id="BE4-qU-MaR"/>
+                                                <constraint firstItem="rLy-cd-Cam" firstAttribute="centerY" secondItem="sxf-rU-uMP" secondAttribute="centerY" id="FM1-WS-Pjr"/>
+                                                <constraint firstItem="lvf-N8-JJg" firstAttribute="leading" secondItem="sxf-rU-uMP" secondAttribute="leadingMargin" id="oGO-sf-VtB"/>
+                                                <constraint firstItem="lvf-N8-JJg" firstAttribute="centerY" secondItem="sxf-rU-uMP" secondAttribute="centerY" id="u1Q-P6-g7a"/>
+                                            </constraints>
+                                        </tableViewCellContentView>
+                                    </tableViewCell>
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" indentationWidth="10" rowHeight="50" id="edb-rx-8S3">
+                                        <rect key="frame" x="0.0" y="757" width="414" height="50"/>
+                                        <autoresizingMask key="autoresizingMask"/>
+                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="edb-rx-8S3" id="ru2-Ni-JaM">
+                                            <rect key="frame" x="0.0" y="0.0" width="414" height="50"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                            <subviews>
+                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Allow people follow me" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Klu-cQ-1ug">
+                                                    <rect key="frame" x="20" y="15" width="176" height="20"/>
+                                                    <fontDescription key="fontDescription" name="HelveticaNeue" family="Helvetica Neue" pointSize="17"/>
+                                                    <nil key="textColor"/>
+                                                    <nil key="highlightedColor"/>
+                                                </label>
+                                                <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Ll4-Vd-HE5">
+                                                    <rect key="frame" x="345" y="9.5" width="51" height="31"/>
+                                                    <color key="onTintColor" red="0.29116719959999998" green="0.40109136699999998" blue="0.67846095559999997" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                                </switch>
+                                            </subviews>
+                                            <constraints>
+                                                <constraint firstItem="Ll4-Vd-HE5" firstAttribute="centerY" secondItem="ru2-Ni-JaM" secondAttribute="centerY" id="1X2-mW-G9L"/>
+                                                <constraint firstAttribute="trailing" secondItem="Ll4-Vd-HE5" secondAttribute="trailing" constant="20" id="4b0-MB-KFU"/>
+                                                <constraint firstItem="Klu-cQ-1ug" firstAttribute="leading" secondItem="ru2-Ni-JaM" secondAttribute="leadingMargin" id="gwS-XL-abs"/>
+                                                <constraint firstItem="Klu-cQ-1ug" firstAttribute="centerY" secondItem="ru2-Ni-JaM" secondAttribute="centerY" id="nCu-kU-pA8"/>
+                                            </constraints>
+                                        </tableViewCellContentView>
+                                    </tableViewCell>
                                 </cells>
                             </tableViewSection>
                         </sections>
@@ -1126,6 +1181,8 @@
                         <outlet property="coverImageView" destination="U5Y-m8-mCe" id="AtA-P4-ZId"/>
                         <outlet property="emailTextField" destination="y39-zx-0tn" id="An3-ea-ZvO"/>
                         <outlet property="firstNameTextField" destination="2IS-7y-bH4" id="Y5A-Ej-MV8"/>
+                        <outlet property="followSwitch" destination="Ll4-Vd-HE5" id="KRK-kY-Ybg"/>
+                        <outlet property="friendsSwitch" destination="rLy-cd-Cam" id="mZd-dM-fy6"/>
                         <outlet property="fullNameLabel" destination="Yxe-9s-1cA" id="xQf-kG-IR4"/>
                         <outlet property="lastNameTextField" destination="Tz0-Nc-xL4" id="0ua-kw-F74"/>
                         <outlet property="passwordTextField" destination="N1X-WL-blL" id="tty-ya-pGG"/>
@@ -1134,7 +1191,7 @@
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="aeq-0j-Jit" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1391.2" y="859.35960591133005"/>
+            <point key="canvasLocation" x="1389.8550724637682" y="859.15178571428567"/>
         </scene>
         <!--Item-->
         <scene sceneID="KTR-An-ijl">
