@@ -11,6 +11,7 @@ import UIKit
 
 private let reuseIdentifierForFriend = "FriendsCell"
 private let reuseIdentifierForRequests = "RequestCell"
+private let reuseIdentifierForRecommendedUserCell = "RecommendCell"
 
 
 
@@ -21,8 +22,6 @@ class FriendsController: UIViewController {
     // PART 1 Searching
     // users objects
     var searchedUsers = [User]()
-//    var searchedUsers = [NSDictionary]()
-    var searchedUsersAvas = [UIImage]()
     var friendshipStatus = [Int]()
         
     // Int TODO: Be careful while using skip the cause of most json error is wrong usage of skip.
@@ -36,15 +35,20 @@ class FriendsController: UIViewController {
     var isSearchedUserStatusUpdated = false
     
     
-    // PART 2 Requests and Friends
+    // PART 2 Requests
     var requestedUsers = [RequestedUser]()
-    var requestedUsersAvas = [UIImage]()
     var limitOfRequestedUsers: Int = 15
     var skipOfRequestedUsers: Int = 0
-    var requestedHeaders = ["FRIEND REQUESTS"]
     var friendStatusForRequest = [Int]()
     
+    // PART 3 Recommended Users
+    var recommendedUsers = [RecommendedUser]()
+    var friendshipStatusForRecommendedUsers = [Int]()
+    var cellIndexPathRow: Int?
     
+//    var willDeleteOnlyControl = 0
+    
+    var friendTableViewHeaders = ["FRIEND REQUESTS", "PEOPLE YOU MAY KNOW"]
     
 // MARK: - Views
     
@@ -65,12 +69,16 @@ class FriendsController: UIViewController {
         
         loadRequests(isFirstLoading: true)
         
+        loadRecommendedUsers()
+        
+        //FIXME: This code below doesn't work.
+        NotificationCenter.default.addObserver(self, selector: #selector(loadRecommendedUsers), name: Notification.Name(rawValue: "friend"), object: nil)
+        
     }
     
-    // last load func
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-//        NotificationCenter.default.removeObserver(Notification.Name("friend"))
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+//        loadRecommendedUsers()
     }
     
     
@@ -86,22 +94,18 @@ class FriendsController: UIViewController {
         UserService.shared.searchUsers(name: searchText, limit: limitOfSearch, offset: skipOfSearch, action: .search, selfVC: self) { (response) in
 
             switch response {
-
             case .failure(let error):
                 print("DEBUG: JSON Error: ", error.localizedDescription)
 //                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
                 self.isLoadingUsers = false
-                
                 self.removeSearchedDatas()
-                
                 self.searchTableView.reloadData()
-                
                 
             case .success(let users):
                 
                 if isFirstLoading {
                     self.searchedUsers = users
-//                    print("DEBUG: request id unFollowed user =  ",self.searchedUsers[3].requested)
+                    print("DEBUG: self.searchedUsers.count =  ",self.searchedUsers.count)
                     
                     self.loadIsFriendshipStatusToAvoidAnyBug(with: self.searchedUsers)
                     
@@ -116,9 +120,7 @@ class FriendsController: UIViewController {
                     self.searchedUsers.append(contentsOf: users)
                     // increment offset (skip all previously loaded users
                     self.skipOfSearch += users.count
-                    
                     self.loadIsFriendshipStatusToAvoidAnyBug(with: self.searchedUsers)
-
                     // insert new cells
                     self.searchTableView.beginUpdates()
 
@@ -136,125 +138,38 @@ class FriendsController: UIViewController {
     }
     
     
-    private func searchUserss(isFirstLoading: Bool) {
-        
-    }
-    
-    private func loadAvaImageViews(indexPathRow: Int, imageView: UIImageView) {
-        
-        // avas logic
-        let avaString = searchedUsers[indexPathRow].ava
-        let avaURL = URL(string: avaString)!
-        
-        // if there are still avas to be loaded
-        if searchedUsers.count != searchedUsersAvas.count {
-            
-            URLSession(configuration: .default).dataTask(with: avaURL) { (data, response, error) in
-                
-                // failed downloading - assign placeholder
-                if error != nil {
-                    if let image = UIImage(named: "userImage") {
-                        
-                        self.searchedUsersAvas.append(image)
-//                            print("DEBUG: AVA assigned")
-                        
-                        DispatchQueue.main.async {
-                            imageView.image = image
-                        }
-                    }
-                }
-                
-                // downloaded
-                if let image = UIImage(data: data!) {
-                    
-                    self.searchedUsersAvas.append(image)
-//                        print("DEBUG: AVA loaded")
-                    
-                    DispatchQueue.main.async {
-                        imageView.image = image
-                    }
-                }
-                
-            }.resume()
-            
-        // cached ava
-        } else {
-//                print("DEBUG: AVA cached")
-            
-            DispatchQueue.main.async {
-                imageView.image = self.searchedUsersAvas[indexPathRow]
-            }
-        }
-    }
-    
-    // update request (confirm / reject / send based on the action)
-    private func updateFriendshipRequest(action: UserServiceAction ,userId: Int, friendId:Int) {
-        
-        UserService.shared.sendFriendRequest(userId: userId, friendId: friendId, action: action,
-                                             selfVC: self) { (response) in
-            
-            switch response {
-            
-            case .failure(let error) :
-                print("DEBUG: JSON Error: ", error.localizedDescription)
-                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
-                
-            case .success(let data) :
-                
-                if data["status"] as! String == "200" {
-
-                }
-                
-                
-            }
-        }
-    }
+   
     
     private func confirmRejectRequestOrDeleteFriend(action: UserServiceAction, userId: Int, friendId: Int) {
-        
-        
         UserService.shared.confirmRejectRequestOrDeleteFriend(userId: userId, friendId: friendId, action: action,
                                                   selfVC: self) { (response) in
             switch response {
-            
             case .failure(let error) :
                 print("DEBUG: JSON Error: ", error.localizedDescription)
                 Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
-                
             case .success(let status):
-                
                 if status.status == "200" {
                     print("DEBUG: Request has been \(action.rawValue)ed successfully, \nDEBUG: Data: \(status)")
                 }
-                
-                
             }
         }
     }
     
     
     private func loadRequests(isFirstLoading: Bool) {
-        
         isLoadingRequests = true
-        
         UserService.shared.loadRequests(limit: limitOfRequestedUsers, offset: skipOfRequestedUsers,
                                         action: .requests,
                                         selfVC: self) { (response) in
-            
             switch response {
-            
             case .failure(let error):
-                
                 print("DEBUG: JSON Error: ", error.localizedDescription)
                 Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
                 self.isLoadingRequests = false
-                
             case .success(let users):
-                
                 if isFirstLoading {
                     // assigning all loaded requests from json to [RequestedUser]
                     self.requestedUsers = users
-                    
                     for _ in users {
                         self.friendStatusForRequest.append(2)
                     }
@@ -262,62 +177,48 @@ class FriendsController: UIViewController {
                     self.skipOfRequestedUsers = users.count
                     // reloading tableView to show all requests
                     self.friendsTableView.reloadData()
-                    
                 }
             }
         }
     }
     
     
-    private func loadAvaImageViewsForRequests(indexPathRow: Int, imageView: UIImageView) {
-        
-        // avas logic
-        let avaString = requestedUsers[indexPathRow].ava ?? String()
-        let avaURL = URL(string: avaString)!
-        
-        // if there are still avas to be loaded
-        if requestedUsers.count != requestedUsersAvas.count {
-            
-            URLSession(configuration: .default).dataTask(with: avaURL) { (data, response, error) in
+    
+    @objc private func loadRecommendedUsers() {
+        guard let userID = currentUser?.id else { return }
+        UserService.loadRecommendedUsers(userId: userID, selfVC: self) { (response) in
+            switch response {
+            case .failure(let error):
+                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
+                return
+            case .success(let users):
                 
-                // failed downloading - assign placeholder
-                if error != nil {
-                    if let image = UIImage(named: "userImage") {
-                        
-                        self.requestedUsersAvas.append(image)
-//                            print("DEBUG: AVA assigned")
-                        
-                        DispatchQueue.main.async {
-                            imageView.image = image
-                        }
-                    }
+                self.recommendedUsers.removeAll(keepingCapacity: false)
+                self.friendshipStatusForRecommendedUsers.removeAll(keepingCapacity: false)
+                
+                self.recommendedUsers = users
+                // initial status all recommended friends will be 0 (no request have been sent no request have been received no friendship at the moment)
+                // checking friendship status of every user
+                for _ in self.recommendedUsers {
+                    self.friendshipStatusForRecommendedUsers.append(0)
+                    print("DEBUG: friendshipStatusForRecommendedUsers = \(self.friendshipStatusForRecommendedUsers)")
+//                    // request sender is current user
+//                    if user.requestSender != nil && user.requestSender == userID {
+//                        self.friendshipStatusForRecommendedUsers.append(1)
+//                    // request is received by current user
+//                    } else if user.requestReceiver != nil && user.requestReceiver == userID {
+//                        self.friendshipStatusForRecommendedUsers.append(2)
+//                    } else {
+//                        self.friendshipStatusForRecommendedUsers.append(0)
+//                    }
                 }
-                
-                // downloaded
-                if let image = UIImage(data: data!) {
-                    
-                    self.requestedUsersAvas.append(image)
-//                        print("DEBUG: AVA loaded")
-                    
-                    DispatchQueue.main.async {
-                        imageView.image = image
-                    }
-                }
-                
-            }.resume()
-            
-        // cached ava
-        } else {
-//                print("DEBUG: AVA cached")
-            
-            DispatchQueue.main.async {
-                imageView.image = self.requestedUsersAvas[indexPathRow]
+                self.friendsTableView.reloadData()
             }
         }
     }
+    
     
 //MARK: - Private Functions
-    
     
     private func loadIsFriendshipStatusToAvoidAnyBug(with searchedUsers: [User]) {
         
@@ -327,7 +228,6 @@ class FriendsController: UIViewController {
         
         // checking friendship status of every user
         for user in searchedUsers {
-            
             // request sender is current user
             if user.requestSender != nil && user.requestSender == currentUserId {
                 self.friendshipStatus.append(1)
@@ -347,7 +247,6 @@ class FriendsController: UIViewController {
         }
     }
     
-    
 //    private func changeFriendButtonImage(indexPathRow: Int, friendButton: UIButton) {
 //
 //        // in the extension document
@@ -357,72 +256,58 @@ class FriendsController: UIViewController {
     
     private func removeSearchedDatas() {
         searchedUsers.removeAll(keepingCapacity: false)
-        searchedUsersAvas.removeAll(keepingCapacity: false)
         friendshipStatus.removeAll(keepingCapacity: false)
     }
     
     private func removeRequestDatas() {
         requestedUsers.removeAll(keepingCapacity: false)
-        requestedUsersAvas.removeAll(keepingCapacity: false)
         skipOfRequestedUsers = 0
     }
     
 // MARK: - Action
     
     // in the searchUserCell
-    @IBAction func friendButton_clicked(_ friendButton: UIButton) {
+    @IBAction func searchUserCellFriendButton_clicked(_ friendButton: UIButton) {
         
         // accessing indexPath.row of pressed button
         let indexPathRow = friendButton.tag
-        
         // access id of current user stored in the global var - currentUser
         guard let userId = currentUser?.id else { return }
         // accessing id of the user searched and clicked on
         let friendId = searchedUsers[indexPathRow].id
-        
-        
         // current user didn't send friendship request -> send it
         if friendshipStatus[indexPathRow] == 0 {
             //update status in the app logic
             friendshipStatus[indexPathRow] = 1
             // send request to the server
-            updateFriendshipRequest(action: .add, userId: userId, friendId: friendId)
+            UserService.sendFriendRequest(userId: userId, friendId: friendId, action: .add,
+                                          selfVC: self)
             friendButton.manipulateAddFriendButton(friendRequestType: self.friendshipStatus[indexPathRow], isShowingTitle: false)
-            
-            
         // current user sent friendship request -> cancel it
         } else if friendshipStatus[indexPathRow] == 1 {
             //update status in the app logic
             friendshipStatus[indexPathRow] = 0
             // send request to the server
-            updateFriendshipRequest(action: .reject, userId: userId, friendId: friendId)
+            UserService.sendFriendRequest(userId: userId, friendId: friendId, action: .reject,
+                                          selfVC: self)
             
             friendButton.manipulateAddFriendButton(friendRequestType: self.friendshipStatus[indexPathRow], isShowingTitle: false)
         //current user received friendship request -> show action sheet
         } else if friendshipStatus[indexPathRow] == 2 {
             //show action sheet to update request: confirm or delete
             showActionSheet(button: friendButton, friendUserId: friendId, currentUserId: userId, indexPathRow: indexPathRow)
-            
-            
         // current user and searched users are friends -> show action sheet
         } else if friendshipStatus[indexPathRow] == 3 {
             // show action sheet to update friendship: delete
             showActionSheet(button: friendButton, friendUserId: friendId, currentUserId: userId, indexPathRow: indexPathRow)
         }
-        
-        
         print(self.friendshipStatus[indexPathRow])
-        
     }
-    
-    
-    
+        
     // shows action sheet for friendship further action
     private func showActionSheet(button: UIButton,friendUserId: Int, currentUserId: Int, indexPathRow: Int) {
-        
         // declaring sheet
         let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        
         // delete button
         let delete = UIAlertAction(title: "Delete", style: .destructive) { (action) in
             // send request
@@ -459,14 +344,45 @@ class FriendsController: UIViewController {
         present(sheet, animated: true, completion: nil)
     }
     
+    @IBAction func recommendedCellAddButton_clicked(_ addButton: UIButton) {
+        // accessing indexPath
+        let indexPathRow = addButton.tag
+        cellIndexPathRow = indexPathRow
+        let indexPath = IndexPath(row: indexPathRow, section: 1)
+        // cast friendship status as request is sent
+        friendshipStatusForRecommendedUsers[indexPathRow] = 1
+        guard let userId = currentUser?.id else { return }
+        let friendId = recommendedUsers[indexPathRow].id
+        UserService.sendFriendRequest(userId: userId, friendId: friendId, action: .add,
+                                      selfVC: self)
+        // access cell for updating of ui obj
+        let cell = friendsTableView.cellForRow(at: indexPath) as! RecommendedUserCell
+        // hide and show obj
+        cell.addButton.isHidden = true
+        cell.removeButton.isHidden = true
+        cell.messageLabel.isHidden = false
+    }
     
+    @IBAction func recommendedCellRemoveButton_clicked(_ removeButton: UIButton) {
+        // accessing indexPath
+        let indexPathRow = removeButton.tag
+        // remove value in array
+        recommendedUsers.remove(at: indexPathRow)
+        friendshipStatusForRecommendedUsers.remove(at: indexPathRow)
+        // remove physical cell
+        let indexPath = IndexPath(row: indexPathRow, section: 1)
+        
+        friendsTableView.deleteRows(at: [indexPath], with: .fade)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.friendsTableView.reloadData()
+        }
+    }
     
     // executed before segue finishes
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
         // access controller in order to its vars
         let guestController = segue.destination as! GuestController
-        
         // going Guest from SearchTableView (tapped on the searched user)
         // exec-d once GuestVC-Segue (id) is executed (id is declared in Main.storyboard)
         if segue.identifier == K.Segue.friendVCToGuestVC_searchTableView {
@@ -474,15 +390,10 @@ class FriendsController: UIViewController {
             // access index of selected cell in order to access index of searchedUsers
             guard let indexPath = searchTableView.indexPathForSelectedRow else { return }
             
-            guestController.comingFromTableView = "search"
+            guestController.comingFromTableView = K.searchTableView
             guestController.guestControllerDelegate = self
             guestController.friendshipStatus = friendshipStatus[indexPath.row]
-            guestController.guestViewModel = GuestViewModel(user: searchedUsers[indexPath.row])
-            
-            print("***************************************************************")
-            
-            print("DEBUG: passed user information \(searchedUsers[indexPath.row])")
-            
+            guestController.guestViewModel = SearchUserCellViewModel(user: searchedUsers[indexPath.row])
             
         // going Guest from FriendsTableView (tapped on a friend or request)
         } else if segue.identifier == K.Segue.friendVCToGuestVC_friendTableView {
@@ -490,11 +401,26 @@ class FriendsController: UIViewController {
             // access index of selected cell in order to access index of searchedUsers
             guard let indexPath = friendsTableView.indexPathForSelectedRow else { return }
             
-            guestController.comingFromTableView = "friend"
+            guestController.comingFromTableView = K.friendsTableViewRequestCell
             guestController.friendshipStatus = friendStatusForRequest[indexPath.row]
             guestController.guestControllerDelegate = self
-            guestController.guestViewModelForRequest = GuestViewModelForRequests(
+            guestController.guestViewModelForRequest = RequestUserCellViewModel(
                 requestedUser: requestedUsers[indexPath.row]) // =3 -> request is received by current user
+            
+        } else if segue.identifier == K.Segue.friendVCToGuestVC_recommendedUserCell {
+            // access index of selected cell in order to access index of searchedUsers
+            guard let indexPath = friendsTableView.indexPathForSelectedRow else { return }
+            
+            self.cellIndexPathRow = indexPath.row
+//            print("DEBUG: cellIndexPathRow \(cellIndexPathRow!)")
+//            print("DEBUG: indexPathRow \(indexPath.row)")
+            print("DEBUG: friendshipStatusForRecommendedUsers--- = \(friendshipStatusForRecommendedUsers)")
+            guestController.comingFromTableView = K.friendsTableViewRecommendedCell
+            guestController.friendshipStatus = friendshipStatusForRecommendedUsers[indexPath.row]
+            guestController.guestControllerDelegate = self
+            guestController.guestViewModelForRecommendedUser = RecommendedUserCellViewModel(
+                recommendedUser: recommendedUsers[indexPath.row]
+            )
             
         }
     }
@@ -606,7 +532,7 @@ extension FriendsController: UISearchBarDelegate {
             self.friendsTableView.reloadData()
             
             removeSearchedDatas()
-            self.searchTableView.reloadData()
+//            self.searchTableView.reloadData()
             self.searchTableView.isHidden = true
             
             
@@ -624,16 +550,33 @@ extension FriendsController: UISearchBarDelegate {
 //MARK: - UITableViewDataSource
 extension FriendsController: UITableViewDataSource {
     
+    // total number of sections in the friends table view
+    func numberOfSections(in tableView: UITableView) -> Int {
+
+        return friendTableViewHeaders.count
+
+
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
         // for tableViewToSearch shows total number of cells equal to searchedUsers
         if tableView == searchTableView {
-            return searchedUsers.count
             
-        // for other tableViews (tableViewToHandleRequests) shows total number of cells equal to requestedUsers
-        } else {
-            return requestedUsers.count
+            if section == 0 { // It's very important for showing searched users
+                return searchedUsers.count
+            }
+           
+        // for other tableViews (tableViewToHandleRequests) shows total number of cells equal to number of relevant array.count
+        } else if tableView == friendsTableView {
+            if section == 0 { // section requests
+                return requestedUsers.count
+            } else { // all other sections - recommended
+                return recommendedUsers.count
+            }
         }
+        
+        return 0
         
     }
     
@@ -642,31 +585,40 @@ extension FriendsController: UITableViewDataSource {
         
         // for tableViewToHandleRequests only show headers
         if tableView == friendsTableView {
-            if section < requestedHeaders.count {
-                return requestedHeaders[section]
+            // scenarios fro all the section cases
+            switch section {
+            // section requests
+            case 0:
+                if self.tableView(tableView, numberOfRowsInSection: section) > 0 {
+                    return friendTableViewHeaders[section]
+                }
+            // section recommended
+            case 1:
+                if self.tableView(tableView, numberOfRowsInSection: section) > 0 {
+                    return friendTableViewHeaders[section]
+                }
+            // non of the section above - default case
+            default:
+                return nil
+            
             }
         }
         
         return nil
     }
     
-    
-
-    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
-        
         
         if tableView == searchTableView {
             
             let cell = searchTableView.dequeueReusableCell(withIdentifier: reuseIdentifierForFriend, for: indexPath) as! SearchUserCell
             
             let user = searchedUsers[indexPath.row]
-            cell.fullNameLabel.text = user.fullName.capitalized
+            
+            cell.viewModel = SearchUserCellViewModel(user: user)
+            
             cell.friendButton.tag = indexPath.row
-            
-            loadAvaImageViews(indexPathRow: indexPath.row, imageView: cell.avaImageView)
-            
+                        
             // manipulate appearance of friendButton
             DispatchQueue.main.async {
                 // if searched user is not allowing a friendship request - hide "send request button" in the cell
@@ -680,31 +632,55 @@ extension FriendsController: UITableViewDataSource {
                 
                 let requestType = self.friendshipStatus[indexPath.row]
                 cell.friendButton.manipulateAddFriendButton(friendRequestType: requestType, isShowingTitle: false)
-                
             }
             return cell
-            
         // configure cell of tableViewToHandleRequests
         } else {
+            // configure cell for requests
+            switch indexPath.section {
             
-            let cell = friendsTableView.dequeueReusableCell(withIdentifier: reuseIdentifierForRequests, for: indexPath) as! RequestUserCell
-            
-            let user = requestedUsers[indexPath.row]
-            cell.fullNameLabel.text = user.fullName.capitalized
-            cell.userId = user.id
-            // creating delegate relations from the cell to current vc in order to access protocols of the delegate class
-            cell.requestUserCellDelegate = self
-            
-            loadAvaImageViewsForRequests(indexPathRow: indexPath.row, imageView: cell.avaImageView)
-            
-            
-            return cell
+            case 0:
+                let cell = friendsTableView.dequeueReusableCell(withIdentifier: reuseIdentifierForRequests, for: indexPath) as! RequestUserCell
+                
+                let requestedUser = requestedUsers[indexPath.row]
+                cell.viewModel = RequestUserCellViewModel(requestedUser: requestedUser)
+                cell.userId = requestedUser.id
+                // creating delegate relations from the cell to current vc in order to access protocols of the delegate class
+                cell.requestUserCellDelegate = self
+                
+                return cell
+                
+            case 1:
+                let cell = friendsTableView.dequeueReusableCell(withIdentifier: reuseIdentifierForRecommendedUserCell,
+                                                                for: indexPath) as! RecommendedUserCell
+                
+                let recommendedUser = recommendedUsers[indexPath.row]
+                cell.viewModel = RecommendedUserCellViewModel(recommendedUser: recommendedUser)
+                // assign tags as indexPathRow for further access
+                cell.addButton.tag = indexPath.row
+                cell.removeButton.tag = indexPath.row
+                
+                
+                DispatchQueue.main.async {
+                    
+                    if self.friendshipStatusForRecommendedUsers[indexPath.row] == 0 {
+                        cell.addButton.isHidden = false
+                        cell.removeButton.isHidden = false
+                        cell.messageLabel.isHidden = true
+                    } else if self.friendshipStatusForRecommendedUsers[indexPath.row] == 1 {
+                        cell.addButton.isHidden = true
+                        cell.removeButton.isHidden = true
+                        cell.messageLabel.isHidden = false
+                    }
+                }
+                
+                return cell
+                
+            default:
+                return UITableViewCell()
+            }
         }
-        
     }
-    
-    
-    
 }
 
 
@@ -718,15 +694,11 @@ extension FriendsController: UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
-        
         // accessing header
         let header = view as! UITableViewHeaderFooterView
-        
         // change font and text color
         header.textLabel?.font = UIFont(name: K.Font.helveticaNeue_light, size: 12)!
         header.textLabel?.textColor = .darkGray
-        
-        
     }
 
 //    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -740,27 +712,19 @@ extension FriendsController: UITableViewDelegate {
 
 extension FriendsController: GuestControllerDelegate {
     
-    
     func didChangeFriendList() {
         
-            
         searchedUsers.removeAll(keepingCapacity: false)
-        searchedUsersAvas.removeAll(keepingCapacity: false)
         friendshipStatus.removeAll(keepingCapacity: false)
-        
         searchUsers(isFirstLoading: true)
-         
     }
     
     func didChangeRequestList() {
         // reload content of arrays
         requestedUsers.removeAll(keepingCapacity: false)
-        requestedUsersAvas.removeAll(keepingCapacity: false)
         // FIXME: Add status
         skipOfRequestedUsers = 0
-        
         loadRequests(isFirstLoading: true)
-        
         friendsTableView.reloadData()
     }
 }
@@ -788,10 +752,6 @@ extension FriendsController: RequestUserCellDelegate {
         // getting friendId (currentUser.id)
         guard let friendId = currentUser?.id else { return }
         
-        
-        
     }
 }
-
-
 

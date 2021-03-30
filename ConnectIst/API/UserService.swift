@@ -143,8 +143,8 @@ struct UserService {
     
     //MARK: - Send Friendship Request
     
-    func sendFriendRequest(userId: Int, friendId: Int, action:UserServiceAction, selfVC: UIViewController,
-                     completion: @escaping (Result<NSDictionary, Error>) -> () ) {
+    static func sendFriendRequest(userId: Int, friendId: Int, action:UserServiceAction,
+                                  selfVC: UIViewController) {
         
         // http://localhost/connectIst/friends.php?action=add&user_id=11&friend_id=12
         
@@ -160,28 +160,21 @@ struct UserService {
         ] as [String : Any]
         
         AF.request(url, method: .post, parameters: parameters).responseJSON { (response) in
-            
             DispatchQueue.main.async {
-                
                 if let err = response.error {
                     Helper.shared.showAlert(title: "Server Error", message: err.localizedDescription, in: selfVC)
                     return
                 }
-                
                 do {
                     guard let data = response.data else {
                         Helper.shared.showAlert(title: "Data Error", message: response.error?.localizedDescription ?? "", in: selfVC)
                         return
                     }
-                    
                     let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? NSDictionary
                     guard let parsedJSON = json else { return }
                     
-                    completion(.success(parsedJSON))
-                    
                 } catch {
                     Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: selfVC)
-                    completion(.failure(error))
                     return
                 }
                 
@@ -334,5 +327,46 @@ struct UserService {
         }
         
     }
+    
+    //MARK: - Recommend Users
+    
+    static func loadRecommendedUsers(userId: Int, selfVC: UIViewController,
+                              completion: @escaping (Result<[RecommendedUser], Error>)->() ) {
+        // http://localhost/connectIst/friends.php?action=recommended&id=11
+        
+        guard let url = URL(string: "http://localhost/connectIst/friends.php") else { return }
+        let body = "action=recommended&id=\(userId)"
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body.data(using: .utf8)
+        // send request
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            DispatchQueue.main.async {
+                // error
+                if error != nil {
+                    Helper.shared.showAlert(title: "Server Error", message: error!.localizedDescription, in: selfVC)
+                    return
+                }
+                do {
+                    // access data received from the server in the safe mode
+                    guard let data = data else {
+                        Helper.shared.showAlert(title: "Data Error", message: error!.localizedDescription, in: selfVC)
+                        return
+                    }
+                    // convert data to being json
+                    let users = try JSONDecoder().decode([RecommendedUser].self, from: data)
+                    completion(.success(users))
+                    
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    
+    
     
 }

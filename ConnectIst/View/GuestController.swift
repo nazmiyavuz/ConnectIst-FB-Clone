@@ -10,7 +10,7 @@ import UIKit
 //MARK: - Protocol
 
 // in order to reload tableView and change friend icon in FriendsController
-protocol GuestControllerDelegate {
+protocol GuestControllerDelegate: class {
     func didChangeFriendList()
     func didChangeRequestList()
 }
@@ -23,10 +23,11 @@ class GuestController: UITableViewController {
     
     // MARK: - Properties
     
-    var guestControllerDelegate: GuestControllerDelegate?
+    weak var guestControllerDelegate: GuestControllerDelegate?
     
-    var guestViewModel: GuestViewModel?
-    var guestViewModelForRequest: GuestViewModelForRequests?
+    var guestViewModel: SearchUserCellViewModel?
+    var guestViewModelForRequest: RequestUserCellViewModel?
+    var guestViewModelForRecommendedUser: RecommendedUserCellViewModel?
     
     var comingFromTableView: String = ""
 //    var id = Int()
@@ -44,7 +45,9 @@ class GuestController: UITableViewController {
     var skip = 0
     var limit = 10
     
-    // trigger ti check is guest requested to be friend or not
+//    var indexPathRow: Int?
+    
+    // trigger to check is guest requested to be friend or not
     var friendshipStatus = 0
     
     // MARK: - Views
@@ -92,42 +95,40 @@ class GuestController: UITableViewController {
         
         isLoadingPost = true
         
-        guard let id = guestViewModel?.id else { return }
+        var userId = 0
+        if comingFromTableView == K.searchTableView {
+            guard let userID = guestViewModel?.id else { return }
+            userId = userID
+        } else if comingFromTableView == K.friendsTableViewRequestCell {
+            guard let userID = guestViewModelForRequest?.id else { return }
+            userId = userID
+        } else if comingFromTableView == K.friendsTableViewRecommendedCell {
+            guard let userID = guestViewModelForRecommendedUser?.id else { return }
+            userId = userID
+        }
         
         
-        PostService.shared.loadPosts(id: id, offset: skip, limit: limit, selfVC: self) { (response) in
-            
+        
+        PostService.shared.loadPosts(id: userId, offset: skip, limit: limit, selfVC: self) { (response) in
             switch response {
-            
             case .failure(let error):
                 Helper.shared.showAlert(title: "End Of The Posts", message: "All Posts are downloaded. ", in: self)
                 self.isLoadingPost = false
                 print("DEBUG: Error: \(error.localizedDescription)")
-                
-                
             case .success(let data):
-                
                 if !isLoadMore {
-                    
                     // assigning all successfully loaded posts to our Class Var - posts (after it got loaded successfully)
                     self.posts = data
-                    
                     // we are skipping already loaded numb of posts for the next load - pagination
                     self.skip = self.posts.count
-                    
                     // clean up likes for the refetching in order to enhance user experience
                     self.postLikes.removeAll(keepingCapacity: false)
-                    
                 } else {
-                    
                     // assigning all successfully loaded posts to our Class Var - posts (after it got loaded successfully)
                     self.posts.append(contentsOf: data)
-                    
                     // we are skipping already loaded numb of posts for the next load - pagination
                     self.skip = self.posts.count
-                    
                 }
-                                
                 // logic of tracking liked posts
                 for post in self.posts {
                     if post.liked == nil {
@@ -136,34 +137,9 @@ class GuestController: UITableViewController {
                         self.postLikes.append(1)
                     }
                 }
-                
                 // reloading tableView to have an affect - show posts
                 self.tableView.reloadData()
-                
                 self.isLoadingPost = false
-            }
-        }
-    }
-    
-    private func updateFriendshipRequest(action: UserServiceAction, userId: Int, friendId: Int) {
-
-        UserService.shared.sendFriendRequest(userId: userId, friendId: friendId, action: action,
-                                             selfVC: self) { (response) in
-            
-            switch response {
-            
-            case .failure(let error) :
-                print("DEBUG: JSON Error: ", error.localizedDescription)
-                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
-                
-            case .success(let data) :
-                
-                // if sent request is successfully, sent notification to FriendController to update the status of request
-                if data["status"] as! String == "200" {
-                    
-//                    NotificationCenter.default.post(name: Notification.Name("friend"), object: nil)
-                    print("DEBUG: Request has been \(action)ed successfully, \nDEBUG: Data: \(data)")
-                }
             }
         }
     }
@@ -175,13 +151,10 @@ class GuestController: UITableViewController {
                                                               action: action,
                                                               selfVC: self) { (response) in
             switch response {
-            
             case .failure(let error) :
                 print("DEBUG: JSON Error: ", error.localizedDescription)
                 Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
-                
             case .success(let status):
-                
                 if status.status == "200" {
                     print("DEBUG: Request has been \(action.rawValue)ed successfully, \nDEBUG: Data: \(status)")
                 }
@@ -193,14 +166,74 @@ class GuestController: UITableViewController {
     
     private func handleFollowedFunc() {
         //  handle following
-        if comingFromTableView == "search" {
+        if comingFromTableView == K.searchTableView {
             isFollowedUser = guestViewModel?.followedUser != nil ? true : false
-        } else if comingFromTableView == "friend" {
+        } else if comingFromTableView == K.friendsTableViewRequestCell {
             isFollowedUser = guestViewModelForRequest?.followedUser != nil ? true : false
+        } else if comingFromTableView == K.friendsTableViewRecommendedCell {
+            
         }
     }
     
+    private func retrieveFriendId() -> Int {
+        var friendId = Int()
+        if comingFromTableView == K.searchTableView {
+            friendId = guestViewModel?.id ?? 0
+        } else if comingFromTableView == K.friendsTableViewRequestCell {
+            friendId = guestViewModelForRequest?.id ?? 0
+        } else if comingFromTableView == K.friendsTableViewRecommendedCell {
+            friendId = guestViewModelForRecommendedUser?.id ?? 0
+        }
+        return friendId
+    }
     
+    // create action sheet and its behavior
+    private func showReportAlert(postId:Int) {
+        // creating alert controller
+        let alert = UIAlertController(title: "Report", message: "Please explain the reason.", preferredStyle: .alert)
+        // creating buttons for action sheet
+        let send = UIAlertAction(title: "Send", style: .default) { (action) in
+            print("DEBUG: Send button clicked...")
+            guard let currentUserId = currentUser?.id else { return }
+            let userId = self.retrieveFriendId()
+            // access reason from alert's textField
+            let textField = alert.textFields![0]
+            
+            ReportService.shared.uploadReport(postId: postId, userId: userId, reason: textField.text!,
+                                              byUserId: currentUserId, selfVC: self)
+            
+        }
+        
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        // add buttons to the alert controller and add textfield
+        alert.addAction(send)
+        alert.addAction(cancel)
+        alert.addTextField { (textField) in
+            textField.placeholder = "Please provide more details."
+            textField.font = UIFont(name: K.Font.helveticaNeue, size: 17)
+        }
+        // show alert controller
+        present(alert, animated: true, completion: nil)
+    }
+    
+    
+    // create action sheet and its behavior
+    private func showReportSheet(postId:Int) {
+        
+        // creating alert controller
+        let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        // creating buttons for action sheet
+        let report = UIAlertAction(title: "Report", style: .default) { (action) in
+            self.showReportAlert(postId: postId)
+        }
+        
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        // add buttons to the alert controller
+        sheet.addAction(report)
+        sheet.addAction(cancel)
+        // show alert controller
+        present(sheet, animated: true, completion: nil)
+    }
     
     // MARK: - Action
     
@@ -208,8 +241,6 @@ class GuestController: UITableViewController {
     // this function executed when like button has been clicked
     @IBAction func likeButton_clicked(_ likeButton: UIButton) {
         //FIXME: There is a bug for like function. If you like a post then everyUser has liked too.
-        
-        
         // get the index of the cell in order to access relevant post's id
         let indexPathRow = likeButton.tag
         // access id of the current user
@@ -288,34 +319,27 @@ class GuestController: UITableViewController {
         // access id of current user stored in the global var - currentUser
         guard let userId = currentUser?.id else { return }
         // accessing id of the user searched and clicked on
-        
-        var friendId = Int()
-        
-        if comingFromTableView == "search" {
-            
-            friendId = guestViewModel?.id ?? 0
-            
-        } else if comingFromTableView == "friend" {
-            
-            friendId = guestViewModelForRequest?.id ?? 0
-        }
+        let friendId = retrieveFriendId()
         
         // current user didn't send friendship request -> send it
         if friendshipStatus == 0 {
             //update status in the app logic
             friendshipStatus = 1
             // send request to the server
-            updateFriendshipRequest(action: .add, userId: userId, friendId: friendId)
+            UserService.sendFriendRequest(userId: userId, friendId: friendId, action: .add,
+                                          selfVC: self)
             friendButton.manipulateAddFriendButton(friendRequestType: friendshipStatus, isShowingTitle: false)
             guestControllerDelegate?.didChangeFriendList()
             guestControllerDelegate?.didChangeRequestList()
+            
 
         // current user sent friendship request -> cancel it
         } else if friendshipStatus == 1 {
             //update status in the app logic
             friendshipStatus = 0
             // send request to the server
-            updateFriendshipRequest(action: .reject, userId: userId, friendId: friendId)
+            UserService.sendFriendRequest(userId: userId, friendId: friendId, action: .reject,
+                                          selfVC: self)
             
             friendButton.manipulateAddFriendButton(friendRequestType: self.friendshipStatus, isShowingTitle: false)
             guestControllerDelegate?.didChangeFriendList()
@@ -331,14 +355,12 @@ class GuestController: UITableViewController {
             // show action sheet to update friendship: delete
             showActionSheet(button: friendButton, friendUserId: friendId, currentUserId: userId)
         }
-        
-        
-        
         print(self.friendshipStatus)
-        
         
         // STEP 2: Animation of zooming / popping
         button.setAnimationForFacebook(scaleX: 0.7, y: 0.7)
+        
+        NotificationCenter.default.post(name: Notification.Name(rawValue: "friend"), object: nil)
         
     }
     
@@ -373,7 +395,6 @@ class GuestController: UITableViewController {
             button.manipulateAddFriendButton(friendRequestType: self.friendshipStatus, isShowingTitle: false)
             self.guestControllerDelegate?.didChangeFriendList()
             self.guestControllerDelegate?.didChangeRequestList()
-
         }
         // cancel button
         let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
@@ -392,10 +413,10 @@ class GuestController: UITableViewController {
         
         guard let currentUserId = currentUser?.id else { return }
         var followedId = 0
-        if comingFromTableView == "search" {
+        if comingFromTableView == K.searchTableView {
             followedId = guestViewModel!.id
             print("DEBUG: followed user id = \(followedId) ")
-        } else if comingFromTableView == "friend" {
+        } else if comingFromTableView == K.friendsTableViewRequestCell {
             followedId = guestViewModelForRequest!.id
         }
         
@@ -417,6 +438,23 @@ class GuestController: UITableViewController {
         
         
     }
+    
+    @IBAction func moreButton_clicked(_ sender: UIButton) {
+        
+        showReportSheet(postId: 0)
+    }
+    
+    
+    @IBAction func optionsButton_clicked(_ optionsButton: UIButton) {
+        // access indexPath.row of the cell
+        let indexPathRow = optionsButton.tag
+        // access id of the post in order to specify it in the server
+        let postId = posts[indexPathRow].id
+        print(postId)
+        showReportSheet(postId: postId)
+    }
+    
+    
     
     
     
@@ -454,28 +492,30 @@ class GuestController: UITableViewController {
     
     private func configure() {
         
-        if comingFromTableView == "search" {
+        if comingFromTableView == K.searchTableView {
             
             guard let viewModel = guestViewModel else { return }
-            let avaPath = viewModel.avaPath
-            Helper.shared.downloadImage(from: avaPath, showIn: avaImageView, orShow: #imageLiteral(resourceName: "userImage"))
             
-            let coverPath = viewModel.coverPath
-            Helper.shared.downloadImage(from: coverPath, showIn: coverImageView, orShow:  #imageLiteral(resourceName: "homeCoverImage"))
+            
+            
+            if let avaPath = viewModel.avaPath {
+                avaImageView.downloadedFrom(url: avaPath, placeHolderImage: #imageLiteral(resourceName: "userImage"))
+            }
+            if let coverPath = viewModel.coverPath {
+                coverImageView.downloadedFrom(url: coverPath, placeHolderImage: #imageLiteral(resourceName: "homeCoverImage"),
+                                              contentMode: .scaleAspectFill)
+            }
             // manipulating buttons based on the privacy settings of the guest user
             if viewModel.allowFriends == 0 && self.friendshipStatus != 2 && self.friendshipStatus != 3 {
                 friendButton.isEnabled = false
             }
-            
             if viewModel.allowFollow == 0 && viewModel.followedUser == nil {
                 followButton.isEnabled = false
             }
-            
             if viewModel.followedUser != nil {
                 followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "follow"), title: "Followed",
                                                         color: K.facebookColor!)
             }
-            
             if let bio = viewModel.bio {
                 bioLabel.text = bio
             } else {
@@ -484,38 +524,34 @@ class GuestController: UITableViewController {
                 stackViewTopConstraint.constant -= 60
                 stackView.layoutIfNeeded()
             }
-            
             fullNameLabel.text = viewModel.fullName.capitalized
-            
             // manipulate the appearance of addFriend Button based on has request been sent or not
             let isRequested = friendshipStatus
             friendButton.manipulateAddFriendButton(friendRequestType: isRequested, isShowingTitle: true)
             print("DEBUG: is friend requested : \(isRequested)")
             
-        } else if comingFromTableView == "friend" {
+        } else if comingFromTableView == K.friendsTableViewRequestCell {
             
             guard let viewModel = guestViewModelForRequest else { return }
             if let avaPath = viewModel.avaPath {
-                Helper.shared.downloadImage(from: avaPath, showIn: avaImageView, orShow: #imageLiteral(resourceName: "userImage"))
+                avaImageView.downloadedFrom(url: avaPath, placeHolderImage: #imageLiteral(resourceName: "userImage"))
             }
-            let coverPath = viewModel.coverPath
-            Helper.shared.downloadImage(from: coverPath, showIn: coverImageView, orShow:  #imageLiteral(resourceName: "homeCoverImage"))
-            
+            if let coverPath = viewModel.coverPath {
+                coverImageView.downloadedFrom(url: coverPath, placeHolderImage: #imageLiteral(resourceName: "homeCoverImage"),
+                                              contentMode: .scaleAspectFill)
+            }
             // FIXME: Rewrite this code for manipulating buttons from coming friendsTableView
             // manipulating buttons based on the privacy settings of the guest user
             if viewModel.allowFriends == 0 && self.friendshipStatus != 2 {
                 friendButton.isEnabled = false
             }
-
             if viewModel.allowFollow == 0 && viewModel.followedUser == nil {
                 followButton.isEnabled = false
             }
-
             if viewModel.followedUser != nil {
                 followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "follow"), title: "Followed",
                                                         color: K.facebookColor!)
             }
-            
             if let bio = viewModel.bio {
                 bioLabel.text = bio
             } else {
@@ -524,19 +560,47 @@ class GuestController: UITableViewController {
                 stackViewTopConstraint.constant -= 60
                 stackView.layoutIfNeeded()
             }
-            
             fullNameLabel.text = viewModel.fullName.capitalized
+            // manipulate the appearance of addFriend Button based on has request been sent or not
+            let isRequested = friendshipStatus
+            friendButton.manipulateAddFriendButton(friendRequestType: isRequested, isShowingTitle: true)
+        } else if comingFromTableView == K.friendsTableViewRecommendedCell {
+            guard let viewModel = guestViewModelForRecommendedUser else { return }
             
+            if let avaPath = viewModel.avaPath {
+                avaImageView.downloadedFrom(url: avaPath, placeHolderImage: #imageLiteral(resourceName: "userImage"))
+            }
+            if let coverPath = viewModel.coverPath {
+                coverImageView.downloadedFrom(url: coverPath, placeHolderImage: #imageLiteral(resourceName: "homeCoverImage"),
+                                              contentMode: .scaleAspectFill)
+            }
+            // FIXME: Rewrite this code for manipulating buttons from coming friendsTableView
+            // manipulating buttons based on the privacy settings of the guest user
+            if viewModel.allowFriends == 0 {
+                friendButton.isEnabled = false
+            }
+            if viewModel.allowFollow == 0 {
+                followButton.isEnabled = false
+            }
+//            if viewModel.followedUser != nil {
+//                followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "follow"), title: "Followed",
+//                                                        color: K.facebookColor!)
+//            }
+            if let bio = viewModel.bio {
+                bioLabel.text = bio
+            } else {
+                headerView.frame.size.height -= 40
+                bioLabel.isHidden = true
+                stackViewTopConstraint.constant -= 60
+                stackView.layoutIfNeeded()
+            }
+            fullNameLabel.text = viewModel.fullName.capitalized
             // manipulate the appearance of addFriend Button based on has request been sent or not
             let isRequested = friendshipStatus
             friendButton.manipulateAddFriendButton(friendRequestType: isRequested, isShowingTitle: true)
             
         }
-        
     }
-    
-    
-    
     
     
     

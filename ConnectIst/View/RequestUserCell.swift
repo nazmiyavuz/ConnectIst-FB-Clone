@@ -23,7 +23,9 @@ class RequestUserCell: UITableViewCell {
     
     var userId = Int()
     
-    
+    var viewModel: RequestUserCellViewModel? {
+        didSet { configure() }
+    }
     
     // MARK: - Views
     
@@ -138,7 +140,16 @@ class RequestUserCell: UITableViewCell {
     }
     
     
-    
+    func configure() {
+        
+        guard let viewModel = viewModel else { return }
+        
+        fullNameLabel.text = viewModel.fullName.capitalized
+        
+        guard let avaUrl = viewModel.avaPath else { return }
+        avaImageView.downloadedFrom(url: avaUrl, placeHolderImage: #imageLiteral(resourceName: "userImage"))
+        
+    }
     
     
 }

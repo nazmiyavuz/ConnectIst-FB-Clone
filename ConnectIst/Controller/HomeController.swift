@@ -267,10 +267,26 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
     }
     
     @IBAction func moreButton_clicked(_ sender: UIButton) {
+        // creating action sheet
+        let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        // creating buttons for action sheet
+        let logout = UIAlertAction(title: "Log Out", style: .destructive) { (action) in
+            let controller = UINavigationController(rootViewController: LoginController())
+            controller.modalPresentationStyle = .fullScreen
+            self.present(controller, animated: true) {
+                
+                if let appDomain = Bundle.main.bundleIdentifier {
+                        UserDefaults.standard.removePersistentDomain(forName: appDomain)
+                    }
+            }
+        }
         
-        let controller = UINavigationController(rootViewController: LoginController())
-        controller.modalPresentationStyle = .fullScreen
-        self.present(controller, animated: true, completion: nil)
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        // add buttons to the actionSheet
+        sheet.addAction(logout)
+        sheet.addAction(cancel)
+        // show action sheet
+        present(sheet, animated: true, completion: nil)
     }
     
     // this function executed when like button has been clicked

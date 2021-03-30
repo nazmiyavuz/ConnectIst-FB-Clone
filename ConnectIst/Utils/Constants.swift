@@ -14,6 +14,9 @@ struct K {
     static let userImage = "userImage"
     static let homeCoverImage = "homeCoverImage"
     static let facebookColor = UIColor(named: "facebookColor")
+    static let searchTableView = "search"
+    static let friendsTableViewRequestCell = "request"
+    static let friendsTableViewRecommendedCell = "recommended"
     
     //    static let cellIdentifier = "ReusableCell"
     //    static let cellNibName = "MessageCell"
@@ -25,6 +28,7 @@ struct K {
         static let friendVCToGuestVC_searchTableView = "ToGuestVCSearchTableView"
         static let friendVCToGuestVC_friendTableView = "ToGuestVCFriendTableView"
         static let guestVCToCommentsVC = "ToCommentsVC"
+        static let friendVCToGuestVC_recommendedUserCell = "ToGuestVCRecommendedCell"
     }
     
     
