@@ -12,7 +12,7 @@ struct BioUploader {
     //MARK: - Update
     
     // updating bio by sending request to the server
-    func updateBio(bioText: String?, selfVC: UIViewController,
+    static func updateBio(bioText: String?, selfVC: UIViewController,
                    completion: @escaping(Error?) -> Void) {
         
         // STEP !. Access var / params to be sent to the server
@@ -81,7 +81,7 @@ struct BioUploader {
     //MARK: - Delete
     
     // deleting bio by sending request to the server
-    func deleteBio(selfVC: UIViewController, bioLabel: UILabel, bioButton:UIButton,
+    static func deleteBio(selfVC: UIViewController, bioLabel: UILabel, bioButton:UIButton,
                    completion: @escaping(Error?) -> Void) {
         
         // STEP !. Access var / params to be sent to the server

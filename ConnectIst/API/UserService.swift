@@ -268,7 +268,11 @@ struct UserService {
                     let status = try JSONDecoder().decode(Status.self, from: data)
                     
                     completion(.success(status))
+                    
+                    // send notification to the server
+                    NotificationService.friendFollowNotifications(userId: userId, friendId: friendId, action: action)
                     print(status)
+                    
                 } catch {
                     Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: selfVC)
                     completion(.failure(error))
@@ -283,50 +287,50 @@ struct UserService {
     
     //MARK: - Delete Friend
     
-    func deleteFriendship(userId: Int, friendId: Int, action:UserServiceAction, selfVC: UIViewController,
-                                completion: @escaping (Result<Status, Error>)->()) {
-        
-        let actionRaw = action.rawValue
-        
-        let urlString = "http://localhost/connectIst/friends.php"
-        guard let url = URL(string: urlString)  else { return }
-        
-        let parameters = [
-            "action": actionRaw,
-            "user_id": userId,
-            "friend_id": friendId
-        ] as [String : Any]
-        
-        AF.request(url, method: .post, parameters: parameters).responseJSON { (response) in
-            
-            DispatchQueue.main.async {
-                
-                if let err = response.error {
-                    Helper.shared.showAlert(title: "Server Error", message: err.localizedDescription, in: selfVC)
-                    return
-                }
-                
-                do {
-                    guard let data = response.data else {
-                        Helper.shared.showAlert(title: "Data Error", message: response.error?.localizedDescription ?? "", in: selfVC)
-                        return
-                    }
-                    
-                    let status = try JSONDecoder().decode(Status.self, from: data)
-                    
-                    completion(.success(status))
-                    
-                } catch {
-                    Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: selfVC)
-                    completion(.failure(error))
-                    return
-                }
-                
-            }
-            
-        }
-        
-    }
+//    func deleteFriendship(userId: Int, friendId: Int, action:UserServiceAction, selfVC: UIViewController,
+//                                completion: @escaping (Result<Status, Error>)->()) {
+//        
+//        let actionRaw = action.rawValue
+//        
+//        let urlString = "http://localhost/connectIst/friends.php"
+//        guard let url = URL(string: urlString)  else { return }
+//        
+//        let parameters = [
+//            "action": actionRaw,
+//            "user_id": userId,
+//            "friend_id": friendId
+//        ] as [String : Any]
+//        
+//        AF.request(url, method: .post, parameters: parameters).responseJSON { (response) in
+//            
+//            DispatchQueue.main.async {
+//                
+//                if let err = response.error {
+//                    Helper.shared.showAlert(title: "Server Error", message: err.localizedDescription, in: selfVC)
+//                    return
+//                }
+//                
+//                do {
+//                    guard let data = response.data else {
+//                        Helper.shared.showAlert(title: "Data Error", message: response.error?.localizedDescription ?? "", in: selfVC)
+//                        return
+//                    }
+//                    
+//                    let status = try JSONDecoder().decode(Status.self, from: data)
+//                    
+//                    completion(.success(status))
+//                    
+//                } catch {
+//                    Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: selfVC)
+//                    completion(.failure(error))
+//                    return
+//                }
+//                
+//            }
+//            
+//        }
+//        
+//    }
     
     //MARK: - Recommend Users
     
@@ -357,6 +361,45 @@ struct UserService {
                     // convert data to being json
                     let users = try JSONDecoder().decode([RecommendedUser].self, from: data)
                     completion(.success(users))
+                    
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    //MARK: - Load Friends
+    
+    static func loadFriends(id: Int, limit: Int, offset: Int, selfVC: UIViewController,
+                            completion: @escaping (Result<[Friend], Error>)-> Void ) {
+        
+        // http://localhost/connectIst/friends.php?action=friends&id=11&limit=20&offset=0
+        
+        guard let url = URL(string: "http://localhost/connectIst/friends.php") else { return }
+        let body = "action=friends&id=\(id)&limit=\(limit)&offset=\(offset)"
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body.data(using: .utf8)
+        // send request
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            DispatchQueue.main.async {
+                // error
+                if error != nil {
+                    Helper.shared.showAlert(title: "Server Error", message: error!.localizedDescription, in: selfVC)
+                    return
+                }
+                do {
+                    // access data received from the server in the safe mode
+                    guard let data = data else {
+                        Helper.shared.showAlert(title: "Data Error", message: error!.localizedDescription, in: selfVC)
+                        return
+                    }
+                    // convert data to being json
+                    let friends = try JSONDecoder().decode([Friend].self, from: data)
+                    completion(.success(friends))
                     
                 } catch {
                     completion(.failure(error))

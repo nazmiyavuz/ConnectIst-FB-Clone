@@ -31,12 +31,16 @@ class CommentsController: UIViewController {
     var comments = [String]()
     var commentIds = [Int]()
     var userIdsOfComments = [Int]()
-//    var postOwnerId = Int()
+    var postOwnerId = Int()
     
     
     var limit = 10
     var skip = 0
     var commentsArray: [Comment] = [Comment]()
+    
+    // feed vc
+    var comingFromVC = ""
+    var avaPath = ""
 
     
 // MARK: - Views
@@ -96,28 +100,24 @@ class CommentsController: UIViewController {
 
     // send a HTTP request to insert the comment
     private func insertComment() {
-        
         // validating vars before sending the server
         guard let user_id = currentUser?.id, let comment = commentTextView.text,
               let ava = currentUserAvaImage, let avaPath = currentUser?.ava else {
-            
             // converting url string to the  valid URL
             if let url = URL(string: currentUser?.ava ?? "" ){
                 // downloading all data from the URL
-                guard let data = try? Data(contentsOf: url) else {
-                    
-                    return
-                }
+                guard let data = try? Data(contentsOf: url) else { return }
                 // converting downloaded data to the image
-                guard let image = UIImage(data: data) else {
-                    return
-                }
+                guard let image = UIImage(data: data) else { return }
                 // assigning image to the global variable
                 currentUserAvaImage = image
             }
-            
             return
         }
+        
+        // send notification to the server
+        NotificationService.sendNotification(userId: user_id, friendId: postOwnerId, type: .comment, action: .insert)
+        
         
         
         // refresh UI, add new comment in the front end
@@ -331,6 +331,11 @@ class CommentsController: UIViewController {
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 70
         
+        
+        if comingFromVC == "feed" {
+            avaImageView.downloadedFrom(link: self.avaPath, placeHolderImage: #imageLiteral(resourceName: "userImage"))
+        }
+        
     }
     
     
@@ -456,6 +461,9 @@ extension CommentsController: UITableViewDataSource {
             tableView.endUpdates()
             
             CommentService.shared.deleteComment(id: id, action: .delete, indexPath: indexPath, selfVC: self)
+            // send notification to the server
+            guard let currentUserId = currentUser?.id else { return }
+            NotificationService.sendNotification(userId: currentUserId, friendId: postOwnerId, type: .comment, action: .delete)
             
         }
     }

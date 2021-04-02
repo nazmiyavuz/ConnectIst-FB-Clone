@@ -52,6 +52,15 @@ class RequestUserCell: UITableViewCell {
     
     private func confirmRejectRequestOrDeleteFriend(action: UserServiceAction, userId: Int, friendId: Int) {
         
+//        if action == .confirm {
+//            
+//            NotificationService.insertOrDeleteNotification(userId: userId, friendId: friendId, action: .insert)
+//            
+//        } else if action == .delete {
+//            
+//            NotificationService.insertOrDeleteNotification(userId: userId, friendId: friendId, action: .delete)
+//            
+//        }
         
         UserService.shared.confirmRejectRequestOrDeleteFriend(userId: userId, friendId: friendId, action: action,
                                                   selfVC: FriendsController()) { (response) in

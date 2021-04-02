@@ -17,6 +17,7 @@ struct K {
     static let searchTableView = "search"
     static let friendsTableViewRequestCell = "request"
     static let friendsTableViewRecommendedCell = "recommended"
+    static let myFriendCell = "myFriend"
     
     //    static let cellIdentifier = "ReusableCell"
     //    static let cellNibName = "MessageCell"
@@ -29,6 +30,9 @@ struct K {
         static let friendVCToGuestVC_friendTableView = "ToGuestVCFriendTableView"
         static let guestVCToCommentsVC = "ToCommentsVC"
         static let friendVCToGuestVC_recommendedUserCell = "ToGuestVCRecommendedCell"
+        static let homeVCToSeeAllFriends = "HomeToAllFriends"
+        static let myFriendsVCToGuestVC = "MyFriendsToGuest"
+        static let feedPostToCommentVC = "FeedPostToCommentVC"
     }
     
     

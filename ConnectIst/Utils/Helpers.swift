@@ -215,11 +215,15 @@ struct Helper {
         
         // declaring delete button
         let delete = UIAlertAction(title: "Delete Bio", style: .destructive) { (action) in
-            BioUploader().deleteBio(selfVC: selfVC, bioLabel: bioLabel, bioButton: bioButton) { (error) in
+            
+            guard let id = currentUser?.id else { return }
+            NotificationService.sendNotification(userId: id, friendId: id, type: .bio, action: .delete)
+            
+            BioUploader.deleteBio(selfVC: selfVC, bioLabel: bioLabel, bioButton: bioButton) { (error) in
                 if let error = error {
                     print("DEBUG: Failed to log user in \(error.localizedDescription)")
                     return
-                }
+                }                
             }
         }
         
@@ -261,7 +265,52 @@ struct Helper {
         return dateShow
     }
     
-    
+    //MARK: - HTTPRequest
+    // sends HTTP requests and return JSON results
+    static func sendHTTPRequest(url: String, body: String, success: @escaping () -> Void, failure: @escaping () -> Void) -> Status {
+        // var to be returned
+        var result : Status?
+        // preparing request
+        let url = URL(string: url)!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body.data(using: .utf8)
+        // send request
+        URLSession.shared.dataTask(with: request) { (data, response, error) in
+            DispatchQueue.main.async {
+                // errors
+                if error != nil {
+                    failure()
+                    return
+                }
+                
+                do {
+                    // casting data received from the server
+                    guard let data = data else {
+                        failure()
+                        return
+                    }
+                    // casting json from data
+                    let status = try JSONDecoder().decode(Status.self, from: data)
+                    // completionHandler. This can be customized whenever this func is called from any other swift classes / files
+                    if status.status == "200" {
+                        success()
+                    } else {
+                        failure()
+                    }
+                    // assigning json data to the result var to be returned with the func
+                    result = status
+                } catch {
+                    failure()
+                    return
+                }
+            }
+        }.resume()
+        // returning json
+        guard let status = result else { return Status(status: "400", message: "Not complete")}
+        
+        return status
+    }
     
     
     

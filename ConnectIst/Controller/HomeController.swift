@@ -9,6 +9,7 @@ import UIKit
 
 private let noPicReuseIdentifier = "NoPicCell"
 private let picReuseIdentifier = "PicCell"
+private let friendsCellIdentifier = "FriendsCell"
 
 class HomeController: UITableViewController, UINavigationControllerDelegate {
 
@@ -30,7 +31,9 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
     
     var isLoadingPost: Bool = false
             
-            
+    // friends obj
+    var myFriends: [Friend]? = [Friend]()
+    
         
         
 
@@ -53,6 +56,10 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        // dynamic cell height
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 200
+        
         // run observer function
         configureNotificationObservers()
         
@@ -61,8 +68,13 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
         configureGestureRecognizer()
         loadUser()
         loadPosts(isLoadMore: false)
+        loadMyFriends()
         
-        
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: true)
     }
     
     
@@ -224,6 +236,21 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
     }
     
     
+    private func loadMyFriends() {
+        guard let id = currentUser?.id else { return }
+        
+        UserService.loadFriends(id: id, limit: 6, offset: 0, selfVC: self) { (response) in
+            switch response {
+            case .failure(let error):
+                print(error.localizedDescription)
+            case .success(let friends):
+                
+                self.myFriends = friends
+                print(self.myFriends!)
+            }
+        }
+    }
+    
     
 // MARK: - Action
     
@@ -306,6 +333,7 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
         if postLikesList[indexPathRow] == 1 {
             // call likePost function to unlike the relevant post
             PostService.shared.likePost(post_id: post_id, user_id: user_id, action: "delete", selfVC: self)
+            NotificationService.sendNotification(userId: user_id, friendId: user_id, type: .like, action: .delete)
             
             // keep in front-end that is post (at this indexPath.row) has been liked
             postLikesList[indexPathRow] = Int()
@@ -317,7 +345,7 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
         } else {
             // call likePost function to like the relevant post
             PostService.shared.likePost(post_id: post_id, user_id: user_id, action: "insert", selfVC: self)
-            
+            NotificationService.sendNotification(userId: user_id, friendId: user_id, type: .like, action: .insert)
             // keep in front-end that is post (at this indexPath.row) has been liked
             postLikesList[indexPathRow] = 1
             
@@ -345,12 +373,10 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
             controller.avaImage = avaImageView.image ?? UIImage()
             controller.fullNameString = fullNameLabel.text ?? ""
             controller.dateString = Helper.shared.formatDateCreated(with: self.postsList[indexPathRow].date_created)
-            
             controller.textString = postsList[indexPathRow].text
-            
             // sending ID of the post
             controller.postId = postsList[indexPathRow].id
-            print("DEBUG: postID \(postsList[indexPathRow].id)")
+            controller.postOwnerId = postsList[indexPathRow].user_id
             // sending image to the CommentsController
             let indexPath = IndexPath(item: indexPathRow, section: 0)
             guard let cell = tableView.cellForRow(at: indexPath) as? PicCell else { return }
@@ -375,16 +401,21 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
         }
         
         // creating Cancel button
-        let cancel = UIAlertAction(title: "Cencel", style: .cancel, handler: nil)
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         
         // assigning buttons to the sheet
         alert.addAction(delete)
         alert.addAction(cancel)
         
-        // showing ac tionSheet
+        // showing actionSheet
         present(alert, animated: true, completion: nil)
     }
     
+    @IBAction func logButton_clicked(_ sender: UIButton) {
+        
+        self.tabBarController?.selectedIndex = 2
+        
+    }
     
     
 // MARK: - Helpers
@@ -525,204 +556,257 @@ class HomeController: UITableViewController, UINavigationControllerDelegate {
 // MARK: - UITableViewDataSource
 
 extension HomeController {
+    // section 1 = friendsView; section 2 = posts
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        return 2
+    }
     
     // number of posts
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
+        if section == 0 { // friends
+            return 1
+        } else { // posts
+            return postsList.count
+        }
         
-        return postsList.count
     }
     
     // configuration of cell
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        // accessing the value (e.g. url) under the key 'picture' for every single element of the array (indexPath.row)
-        let pictureURL = postsList[indexPath.row].picture
-        
-        // no picture in the post
-        if pictureURL.isEmpty {
+        // section 0 which includes 1 cell that shows myFriends
+        if indexPath.section == 0 {
+            
             // accessing the cell from MainStoryboard
-            let cell = tableView.dequeueReusableCell(withIdentifier: noPicReuseIdentifier, for: indexPath) as! NoPicCell
-            let post = postsList[indexPath.row]
-            cell.viewModel = PostViewModel(post: post)
+            let cell = tableView.dequeueReusableCell(withIdentifier: friendsCellIdentifier, for: indexPath)
             
-            // avas logic
-            let avaString = postsList[indexPath.row].ava!
-            let avaURL = URL(string: avaString)!
-            
-            
-            // if there are still avas to be loaded
-            if postsList.count != userAvasList.count {
+            // shortcuts, parameters of frame
+            let gap : CGFloat = 15
+            var x : CGFloat = 15
+            var y : CGFloat = 50
+            let width = (cell.contentView.frame.width / 3) - 20
+            let height = width
+            // add multiple views depending on the total number of elements in the array
+            if let friends = self.myFriends {
                 
-                URLSession(configuration: .default).dataTask(with: avaURL) { (data, response, error) in
-                    
-                    // failed downloading - assign placeholder
-                    if error != nil {
-                        if let image = UIImage(named: "user.png") {
-                            
-                            self.userAvasList.append(image)
-//                            print("DEBUG: AVA assigned")
-                            
-                            DispatchQueue.main.async {
-                                cell.avaImageView.image = image
-                            }
-                        }
+                for i in 0 ..< friends.count {
+                    let frame = CGRect(x: x, y: y, width: width, height: height)
+                    let button = UIButton()
+                    button.frame = frame
+                    button.tag = i
+                    button.backgroundColor = .red
+                    button.setTitleColor(.black, for: .normal)
+                    button.titleLabel?.font = UIFont(name: K.Font.helveticaNeue_medium, size: 14)
+                    button.setTitle(friends[i].fullName.capitalized, for: .normal)
+                    button.centerVertically(gap: 30)
+                    cell.contentView.addSubview(button)
+                    // declare new x and y (coordinate) for the following button
+                    x += width + gap
+                    // if already 3 elements are shown, show the following elements in the new row.
+                    if i == 2 {
+                        x = 15
+                        y += height + 30 + gap
                     }
+                    button.setBackgroundImageFrom(link: friends[i].ava, placeHolderImage: #imageLiteral(resourceName: "userImage"))
                     
-                    // downloaded
-                    if let image = UIImage(data: data!) {
-                        
-                        self.userAvasList.append(image)
-//                        print("DEBUG: AVA loaded")
-                        
-                        DispatchQueue.main.async {
-                            cell.avaImageView.image = image
-                        }
-                    }
-                    
-                }.resume()
-                
-            // cached ava
-            } else {
-//                print("DEBUG: AVA cached")
-                
-                DispatchQueue.main.async {
-                    cell.avaImageView.image = self.userAvasList[indexPath.row]
                 }
             }
-            // picture logic
-            postsPicturesList.append(UIImage())
             
-            // get the index of the cell in order to get certain post's id
-            cell.likeButton.tag = indexPath.row
-            cell.commentsButton.tag = indexPath.row
-            cell.optionsButton.tag = indexPath.row
             
-            //manipulating the appearance of the button based is the post has been liked or not
-            DispatchQueue.main.async {
-                if self.postLikesList[indexPath.row] == 1 {
-                    cell.likeButton.setImage(UIImage(named: "like"), for: .normal)
-                    cell.likeButton.tintColor = K.Button.Color.likeButtonColor
-                } else {
-                    cell.likeButton.setImage(UIImage(named: "unlike"), for: .normal)
-                    cell.likeButton.tintColor = .darkGray
-                }
-            }
-
+            
+//            cell.backgroundColor = .systemRed
             return cell
             
-        // picture in the post
-        } else {
-            // accessing the cell from MainStoryboard
-            let cell = tableView.dequeueReusableCell(withIdentifier: picReuseIdentifier, for: indexPath) as! PicCell
-            let post = postsList[indexPath.row]
-            cell.viewModel = PostViewModel(post: post)
+        } else { // section 1 (or any other sections) which which shows all the posts of the user
+            // accessing the value (e.g. url) under the key 'picture' for every single element of the array (indexPath.row)
+            let pictureURL = postsList[indexPath.row].picture
             
-            
-            // avas logic
-            let avaString = postsList[indexPath.row].ava!
-            let avaURL = URL(string: avaString)!
-            
-            // if there are still avas to be loaded
-            if postsList.count != userAvasList.count {
+            // no picture in the post
+            if pictureURL.isEmpty {
+                // accessing the cell from MainStoryboard
+                let cell = tableView.dequeueReusableCell(withIdentifier: noPicReuseIdentifier, for: indexPath) as! NoPicCell
+                let post = postsList[indexPath.row]
+                cell.postViewModel = PostViewModel(post: post)
                 
-                URLSession(configuration: .default).dataTask(with: avaURL) { (data, response, error) in
+                // avas logic
+                let avaString = postsList[indexPath.row].ava!
+                let avaURL = URL(string: avaString)!
+                
+                
+                // if there are still avas to be loaded
+                if postsList.count != userAvasList.count {
                     
-                    // failed downloading - assign placeholder
-                    if error != nil {
-                        if let image = UIImage(named: "user.png") {
+                    URLSession(configuration: .default).dataTask(with: avaURL) { (data, response, error) in
+                        
+                        // failed downloading - assign placeholder
+                        if error != nil {
+                            if let image = UIImage(named: "user.png") {
+                                
+                                self.userAvasList.append(image)
+    //                            print("DEBUG: AVA assigned")
+                                
+                                DispatchQueue.main.async {
+                                    cell.avaImageView.image = image
+                                }
+                            }
+                        }
+                        
+                        // downloaded
+                        if let image = UIImage(data: data!) {
                             
                             self.userAvasList.append(image)
-//                            print("DEBUG: AVA assigned")
+    //                        print("DEBUG: AVA loaded")
                             
                             DispatchQueue.main.async {
                                 cell.avaImageView.image = image
                             }
                         }
-                    }
-                    
-                    // downloaded
-                    if let image = UIImage(data: data!) {
                         
-                        self.userAvasList.append(image)
-//                        print("DEBUG: AVA loaded")
-                        
-                        DispatchQueue.main.async {
-                            cell.avaImageView.image = image
-                        }
-                    }
+                    }.resume()
                     
-                }.resume()
-                
-            // cached ava
-            } else {
-//                print("DEBUG: AVA cached")
-                
-                DispatchQueue.main.async {
-                    cell.avaImageView.image = self.userAvasList[indexPath.row]
+                // cached ava
+                } else {
+    //                print("DEBUG: AVA cached")
+                    
+                    DispatchQueue.main.async {
+                        cell.avaImageView.image = self.userAvasList[indexPath.row]
+                    }
                 }
-            }
-            
-            
-            // pictures logic
-            let pictureString = postsList[indexPath.row].picture
-            let pictureURL = URL(string: pictureString)!
-            
-            // if there are still pictures to be loaded
-            if postsList.count != postsPicturesList.count {
+                // picture logic
+                postsPicturesList.append(UIImage())
                 
-                URLSession(configuration: .default).dataTask(with: pictureURL) { (data, response, error) in
-                    // failed downloading - assign placeholder
-                    if error != nil {
-                        if let image = UIImage(named: "user.png") {
+                // get the index of the cell in order to get certain post's id
+                cell.likeButton.tag = indexPath.row
+                cell.commentsButton.tag = indexPath.row
+                cell.optionsButton.tag = indexPath.row
+                
+                //manipulating the appearance of the button based is the post has been liked or not
+                DispatchQueue.main.async {
+                    if self.postLikesList[indexPath.row] == 1 {
+                        cell.likeButton.setImage(UIImage(named: "like"), for: .normal)
+                        cell.likeButton.tintColor = K.Button.Color.likeButtonColor
+                    } else {
+                        cell.likeButton.setImage(UIImage(named: "unlike"), for: .normal)
+                        cell.likeButton.tintColor = .darkGray
+                    }
+                }
+
+                return cell
+                
+            // picture in the post
+            } else {
+                // accessing the cell from MainStoryboard
+                let cell = tableView.dequeueReusableCell(withIdentifier: picReuseIdentifier, for: indexPath) as! PicCell
+                let post = postsList[indexPath.row]
+                cell.postViewModel = PostViewModel(post: post)
+                
+                
+                // avas logic
+                let avaString = postsList[indexPath.row].ava!
+                let avaURL = URL(string: avaString)!
+                
+                // if there are still avas to be loaded
+                if postsList.count != userAvasList.count {
+                    
+                    URLSession(configuration: .default).dataTask(with: avaURL) { (data, response, error) in
+                        
+                        // failed downloading - assign placeholder
+                        if error != nil {
+                            if let image = UIImage(named: "user.png") {
+                                
+                                self.userAvasList.append(image)
+    //                            print("DEBUG: AVA assigned")
+                                
+                                DispatchQueue.main.async {
+                                    cell.avaImageView.image = image
+                                }
+                            }
+                        }
+                        
+                        // downloaded
+                        if let image = UIImage(data: data!) {
+                            
+                            self.userAvasList.append(image)
+    //                        print("DEBUG: AVA loaded")
+                            
+                            DispatchQueue.main.async {
+                                cell.avaImageView.image = image
+                            }
+                        }
+                        
+                    }.resume()
+                    
+                // cached ava
+                } else {
+    //                print("DEBUG: AVA cached")
+                    
+                    DispatchQueue.main.async {
+                        cell.avaImageView.image = self.userAvasList[indexPath.row]
+                    }
+                }
+                
+                
+                // pictures logic
+                let pictureString = postsList[indexPath.row].picture
+                let pictureURL = URL(string: pictureString)!
+                
+                // if there are still pictures to be loaded
+                if postsList.count != postsPicturesList.count {
+                    
+                    URLSession(configuration: .default).dataTask(with: pictureURL) { (data, response, error) in
+                        // failed downloading - assign placeholder
+                        if error != nil {
+                            if let image = UIImage(named: "user.png") {
+                                
+                                self.postsPicturesList.append(image)
+    //                            print("DEBUG: PIC assigned")
+                                
+                                DispatchQueue.main.async {
+                                    cell.pictureImageView.image = image
+                                }
+                            }
+                        }
+                        
+                        // downloaded
+                        if let image = UIImage(data: data!) {
                             
                             self.postsPicturesList.append(image)
-//                            print("DEBUG: PIC assigned")
+    //                        print("DEBUG: PIC loaded")
                             
                             DispatchQueue.main.async {
                                 cell.pictureImageView.image = image
                             }
                         }
-                    }
+                    }.resume()
                     
-                    // downloaded
-                    if let image = UIImage(data: data!) {
-                        
-                        self.postsPicturesList.append(image)
-//                        print("DEBUG: PIC loaded")
-                        
-                        DispatchQueue.main.async {
-                            cell.pictureImageView.image = image
-                        }
-                    }
-                }.resume()
-                
-            // cached picture
-            } else {
-//                print("DEBUG: PIC cached")
-                
-                DispatchQueue.main.async {
-                    cell.pictureImageView.image = self.postsPicturesList[indexPath.row]
-                }
-            }
-            
-            // get the index of the cell in order to get certain post's id
-            cell.likeButton.tag = indexPath.row
-            cell.commentsButton.tag = indexPath.row
-            cell.optionsButton.tag = indexPath.row
-            
-            //manipulating the appearance of the button based is the post has been liked or not
-            DispatchQueue.main.async {
-                if self.postLikesList[indexPath.row] == 1 {
-                    cell.likeButton.setImage(UIImage(named: "like"), for: .normal)
-                    cell.likeButton.tintColor = K.Button.Color.likeButtonColor
+                // cached picture
                 } else {
-                    cell.likeButton.setImage(UIImage(named: "unlike"), for: .normal)
-                    cell.likeButton.tintColor = .darkGray
+    //                print("DEBUG: PIC cached")
+                    
+                    DispatchQueue.main.async {
+                        cell.pictureImageView.image = self.postsPicturesList[indexPath.row]
+                    }
                 }
+                
+                // get the index of the cell in order to get certain post's id
+                cell.likeButton.tag = indexPath.row
+                cell.commentsButton.tag = indexPath.row
+                cell.optionsButton.tag = indexPath.row
+                
+                //manipulating the appearance of the button based is the post has been liked or not
+                DispatchQueue.main.async {
+                    if self.postLikesList[indexPath.row] == 1 {
+                        cell.likeButton.setImage(UIImage(named: "like"), for: .normal)
+                        cell.likeButton.tintColor = K.Button.Color.likeButtonColor
+                    } else {
+                        cell.likeButton.setImage(UIImage(named: "unlike"), for: .normal)
+                        cell.likeButton.tintColor = .darkGray
+                    }
+                }
+                
+                return cell
+                
             }
-            
-            return cell
-            
         }
     }
 }
@@ -730,6 +814,20 @@ extension HomeController {
 // MARK: - UITableViewDelegate
 
 extension HomeController {
+    
+    override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        // height of the cell in section 0 (cell to show the friends)
+        if indexPath.section == 0 {
+            guard let friends = self.myFriends else { return 0 }
+            if friends.count < 4 {
+                return 200
+            } else {
+                return 350
+            }
+        } else { // height of the cell in section 1 (cell to show the posts)
+            return UITableView.automaticDimension
+        }
+    }
     
     
     // executed always whenever tableView is scrolling
@@ -745,7 +843,7 @@ extension HomeController {
         }
     }
     
-    
+    /*
     // executed whenever new is to be displayed
     override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         
@@ -937,6 +1035,8 @@ extension HomeController {
             
         }
     }
+     */
+    
 }
 
 // MARK:- ImagePickerControlerDelegate

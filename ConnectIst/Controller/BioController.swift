@@ -105,20 +105,18 @@ class BioController: UIViewController {
     @objc func saveButton_clicked() {
         guard let bio = textView.text else { return }
         
+        guard let id = currentUser?.id else { return }
+        NotificationService.sendNotification(userId: id, friendId: id, type: .bio, action: .insert)
+        
         // run update function if there are no whiteLines and whiteSpaces
         if textView.text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty == false {
-            BioUploader().updateBio(bioText: bio, selfVC: self) { (error) in
+            BioUploader.updateBio(bioText: bio, selfVC: self) { (error) in
                 if let error = error {
                     print("DEBUG: Failed to log user in \(error.localizedDescription)")
                     return
                 }
-
             }
-            
-            
         }
-        
-        
     }
     
     // MARK: - Helpers

@@ -141,6 +141,8 @@ class FriendsController: UIViewController {
    
     
     private func confirmRejectRequestOrDeleteFriend(action: UserServiceAction, userId: Int, friendId: Int) {
+        
+        
         UserService.shared.confirmRejectRequestOrDeleteFriend(userId: userId, friendId: friendId, action: action,
                                                   selfVC: self) { (response) in
             switch response {
@@ -164,7 +166,7 @@ class FriendsController: UIViewController {
             switch response {
             case .failure(let error):
                 print("DEBUG: JSON Error: ", error.localizedDescription)
-                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
+//                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
                 self.isLoadingRequests = false
             case .success(let users):
                 if isFirstLoading {
@@ -189,7 +191,7 @@ class FriendsController: UIViewController {
         UserService.loadRecommendedUsers(userId: userID, selfVC: self) { (response) in
             switch response {
             case .failure(let error):
-                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
+//                Helper.shared.showAlert(title: "JSON Error", message: error.localizedDescription, in: self)
                 return
             case .success(let users):
                 

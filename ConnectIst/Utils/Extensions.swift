@@ -77,13 +77,13 @@ extension UILabel {
 extension UIButton {
     
     // adjust the icon and title position
-    func centerVertically() {
+    func centerVertically(gap: CGFloat) {
         
         // adjust title's width
         self.contentEdgeInsets = UIEdgeInsets(top: 0, left: -15, bottom: 0, right: -15)
         
         // vertical position of the title
-        let padding = self.frame.height + 10
+        let padding = self.frame.height + gap
         
         // accessing sizes
         let imageSize = self.imageView!.frame.size
@@ -147,6 +147,33 @@ extension UIButton {
         tintColor = color
         titleLabel?.textColor = color
     }
+    
+    
+    func setBackgroundImageFrom(url: URL, placeHolderImage:UIImage) {
+        URLSession.shared.dataTask(with: url) { (data, response, error) in
+            
+            if error != nil {
+                self.setBackgroundImage(placeHolderImage, for: .normal)
+                return
+            }
+            
+            guard
+                let httpURLResponse = response as? HTTPURLResponse, httpURLResponse.statusCode == 200,
+                let mimeType = response?.mimeType, mimeType.hasPrefix("image"),
+                let data = data, error == nil,
+                let image = UIImage(data: data)
+            else { return }
+            DispatchQueue.main.async() { () -> Void in
+                self.setBackgroundImage(image, for: .normal)
+            }
+        }.resume()
+    }
+    
+    func setBackgroundImageFrom(link: String, placeHolderImage:UIImage) {
+        guard let url = URL(string: link) else { return }
+        setBackgroundImageFrom(url: url, placeHolderImage: placeHolderImage)
+    }
+    
     
     
 //    func manipulateFollowButton(followedUser: Int?) {
@@ -298,6 +325,34 @@ extension UIImageView {
         downloadedFrom(url: url, placeHolderImage: placeHolderImage, contentMode: mode)
     }
 }
+
+extension UIImage {
+    
+    func downloadedFrom(url: URL, placeHolderImage:UIImage) {
+        URLSession.shared.dataTask(with: url) { (data, response, error) in
+            
+            if error != nil {
+                placeHolderImage
+                return
+            }
+            
+            guard
+                let httpURLResponse = response as? HTTPURLResponse, httpURLResponse.statusCode == 200,
+                let mimeType = response?.mimeType, mimeType.hasPrefix("image"),
+                let data = data, error == nil
+                else { return }
+            UIImage(data: data)
+            
+        }.resume()
+    }
+    
+    func downloadedFrom(link: String, placeHolderImage:UIImage, contentMode mode: UIView.ContentMode = .scaleAspectFit) {
+        guard let url = URL(string: link) else { return }
+        downloadedFrom(url: url, placeHolderImage: placeHolderImage)
+    }
+    
+}
+
 
 
 //MARK: - UIView

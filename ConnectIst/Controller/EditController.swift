@@ -111,6 +111,14 @@ class EditController: UITableViewController, UINavigationControllerDelegate {
     func updateUser() {
         guard let id = currentUser?.id  else { return }
         
+        // send notification to the server
+        if isAvaSelected {
+            NotificationService.sendNotification(userId: id, friendId: id, type: .ava, action: .insert)
+        } else if isCoverSelected {
+            NotificationService.sendNotification(userId: id, friendId: id, type: .cover, action: .insert)
+        }
+        
+        
         let email = emailTextField.text!
         let userName = userNameTextField.text!
         let firstName = firstNameTextField.text!

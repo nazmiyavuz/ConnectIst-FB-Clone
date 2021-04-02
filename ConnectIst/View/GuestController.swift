@@ -28,6 +28,8 @@ class GuestController: UITableViewController {
     var guestViewModel: SearchUserCellViewModel?
     var guestViewModelForRequest: RequestUserCellViewModel?
     var guestViewModelForRecommendedUser: RecommendedUserCellViewModel?
+    var guestViewModelForMyFriendCell: MyFriendCellViewModel?
+    
     
     var comingFromTableView: String = ""
 //    var id = Int()
@@ -105,6 +107,14 @@ class GuestController: UITableViewController {
         } else if comingFromTableView == K.friendsTableViewRecommendedCell {
             guard let userID = guestViewModelForRecommendedUser?.id else { return }
             userId = userID
+        } else if comingFromTableView == K.myFriendCell {
+            guard let currentUserid = currentUser?.id else { return }
+            guard let viewModel = guestViewModelForMyFriendCell else { return }
+            if viewModel.friendId == currentUserid {
+                userId = viewModel.userId
+            } else {
+                userId = viewModel.friendId
+            }
         }
         
         
@@ -183,6 +193,14 @@ class GuestController: UITableViewController {
             friendId = guestViewModelForRequest?.id ?? 0
         } else if comingFromTableView == K.friendsTableViewRecommendedCell {
             friendId = guestViewModelForRecommendedUser?.id ?? 0
+        } else if comingFromTableView == K.myFriendCell {
+            guard let currentUserid = currentUser?.id,
+                  let viewModel = guestViewModelForMyFriendCell else { return 0 }
+            if viewModel.friendId == currentUserid {
+                friendId = viewModel.userId
+            } else {
+                friendId = viewModel.friendId
+            }
         }
         return friendId
     }
@@ -248,12 +266,31 @@ class GuestController: UITableViewController {
         // access id of the certain post which is related to the cell where the button has been clicked
         let post_id = posts[indexPathRow].id
         
+        var friendId = 0
+        if comingFromTableView == K.searchTableView {
+            guard let userID = guestViewModel?.id else { return }
+            friendId = userID
+        } else if comingFromTableView == K.friendsTableViewRequestCell {
+            guard let userID = guestViewModelForRequest?.id else { return }
+            friendId = userID
+        } else if comingFromTableView == K.friendsTableViewRecommendedCell {
+            guard let userID = guestViewModelForRecommendedUser?.id else { return }
+            friendId = userID
+        } else if comingFromTableView == K.myFriendCell {
+            guard let currentUserid = currentUser?.id,
+                  let viewModel = guestViewModelForMyFriendCell else { return }
+            if viewModel.friendId == currentUserid {
+                friendId = viewModel.userId
+            } else {
+                friendId = viewModel.friendId
+            }
+        }
         
         // building logic / trigger / switcher to like or unlike the post
         if postLikes[indexPathRow] == 1 {
             // call likePost function to unlike the relevant post
             PostService.shared.likePost(post_id: post_id, user_id: user_id, action: "delete", selfVC: self)
-            
+            NotificationService.sendNotification(userId: user_id, friendId: friendId, type: .like, action: .delete)
             // keep in front-end that is post (at this indexPath.row) has been liked
             postLikes[indexPathRow] = Int()
             
@@ -264,7 +301,7 @@ class GuestController: UITableViewController {
         } else {
             // call likePost function to like the relevant post
             PostService.shared.likePost(post_id: post_id, user_id: user_id, action: "insert", selfVC: self)
-            
+            NotificationService.sendNotification(userId: user_id, friendId: friendId, type: .like, action: .insert)
             // keep in front-end that is post (at this indexPath.row) has been liked
             postLikes[indexPathRow] = 1
             
@@ -292,12 +329,11 @@ class GuestController: UITableViewController {
             controller.avaImage = avaImageView.image ?? UIImage()
             controller.fullNameString = fullNameLabel.text ?? ""
             controller.dateString = Helper.shared.formatDateCreated(with: self.posts[indexPathRow].date_created)
-            
             controller.textString = posts[indexPathRow].text
-            
             // sending ID of the post
             controller.postId = posts[indexPathRow].id
             print("DEBUG: postID \(posts[indexPathRow].id)")
+            controller.postOwnerId = posts[indexPathRow].user_id
             // sending image to the CommentsController
 //            let indexPath = IndexPath(item: indexPathRow, section: 0)
 //            guard let cell = tableView.cellForRow(at: indexPath) as? PicCell else { return }
@@ -314,7 +350,7 @@ class GuestController: UITableViewController {
     @IBAction func friendButton_clicked(_ button: UIButton) {
         
         // accessing indexPath.row of pressed button
-        let indexPathRow = friendButton.tag
+        _ = friendButton.tag
         
         // access id of current user stored in the global var - currentUser
         guard let userId = currentUser?.id else { return }
@@ -455,6 +491,10 @@ class GuestController: UITableViewController {
     }
     
     
+    @IBAction func messageButton_clicked(_ sender: UIButton) {
+        
+        
+    }
     
     
     
@@ -467,10 +507,10 @@ class GuestController: UITableViewController {
         tableView.rowHeight = UITableView.automaticDimension
         
         // bar buttons
-        friendButton.centerVertically()
-        followButton.centerVertically()
-        messageButton.centerVertically()
-        moreButton.centerVertically()
+        friendButton.centerVertically(gap: 10)
+        followButton.centerVertically(gap: 10)
+        messageButton.centerVertically(gap: 10)
+        moreButton.centerVertically(gap: 10)
         
     }
     
@@ -599,6 +639,44 @@ class GuestController: UITableViewController {
             let isRequested = friendshipStatus
             friendButton.manipulateAddFriendButton(friendRequestType: isRequested, isShowingTitle: true)
             
+        } else if comingFromTableView == K.myFriendCell {
+            guard let viewModel = guestViewModelForMyFriendCell else { return }
+            
+            if let avaPath = viewModel.avaPath {
+                avaImageView.downloadedFrom(url: avaPath, placeHolderImage: #imageLiteral(resourceName: "userImage"))
+            }
+            if let coverPath = viewModel.coverPath {
+                coverImageView.downloadedFrom(url: coverPath, placeHolderImage: #imageLiteral(resourceName: "homeCoverImage"),
+                                              contentMode: .scaleAspectFill)
+            }
+            // FIXME: Rewrite this code for manipulating buttons from coming friendsTableView
+            // manipulating buttons based on the privacy settings of the guest user
+            if viewModel.allowFriends == 0 {
+                friendButton.isEnabled = false
+            }
+            if viewModel.allowFollow == 0 {
+                followButton.isEnabled = false
+            }
+//            if viewModel.followedUser != nil {
+//                followButton.updateButtonIconTitleColor(backgroundImage: #imageLiteral(resourceName: "follow"), title: "Followed",
+//                                                        color: K.facebookColor!)
+//            }
+            if let bio = viewModel.bio {
+                bioLabel.text = bio
+            } else {
+                headerView.frame.size.height -= 40
+                bioLabel.isHidden = true
+                stackViewTopConstraint.constant -= 60
+                stackView.layoutIfNeeded()
+            }
+            fullNameLabel.text = viewModel.fullName.capitalized
+            // manipulate the appearance of addFriend Button based on has request been sent or not
+            let isRequested = friendshipStatus
+            friendButton.manipulateAddFriendButton(friendRequestType: isRequested, isShowingTitle: true)
+            
+            
+            
+            
         }
     }
     
@@ -621,7 +699,7 @@ extension GuestController {
         // accessing the cell from MainStoryboard
         let cell = tableView.dequeueReusableCell(withIdentifier: reuseIdentifier, for: indexPath) as! PicCell
         let post = posts[indexPath.row]
-        cell.viewModel = PostViewModel(post: post)
+        cell.postViewModel = PostViewModel(post: post)
         
         
         // avas logic

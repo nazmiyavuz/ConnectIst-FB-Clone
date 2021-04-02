@@ -162,6 +162,8 @@ struct PostService {
                     // converting data to the JSON
                     let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? NSDictionary
                     
+                    
+                    
                     print("DEBUG: JSON: \(json)")
                     
                     
@@ -216,6 +218,43 @@ struct PostService {
         }
     }
     
+    //MARK: - Load FeedPosts
+    
+    static func loadFeedPots(id: Int ,offset: Int, limit: Int, selfVC: UIViewController, completion: @escaping (Result<[FeedPost], Error>)-> Void ) {
+        
+        // http://localhost/connectIst/selectPosts.php?id=11&limit=100&offset=0&action=feed
+        
+        guard let url = URL(string: "http://localhost/connectIst/selectPosts.php") else { return }
+        let body = "id=\(id)&limit=\(limit)&offset=\(offset)&action=feed"
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body.data(using: .utf8)
+        // send request
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            DispatchQueue.main.async {
+                // error
+                if error != nil {
+                    Helper.shared.showAlert(title: "Server Error", message: error!.localizedDescription, in: selfVC)
+                    return
+                }
+                do {
+                    // access data received from the server in the safe mode
+                    guard let data = data else {
+                        Helper.shared.showAlert(title: "Data Error", message: error!.localizedDescription, in: selfVC)
+                        return
+                    }
+                    // convert data to being json
+                    let feedPosts = try JSONDecoder().decode([FeedPost].self, from: data)
+                    completion(.success(feedPosts))
+                    
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        }
+        task.resume()
+    }
     
     
 }
